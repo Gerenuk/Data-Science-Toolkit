@@ -1,0 +1,7 @@
+* save bucket num
+* triangle core with param
+* predefined monthly, weekly
+* time out: multiply by timenum
+* do arbit num bucket dimensions
+* output periods of periodicity
+* version with full Spark?
