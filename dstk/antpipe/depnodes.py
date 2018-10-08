@@ -1,7 +1,6 @@
-from abc import ABC, abstractproperty, abstractmethod
-from collections import namedtuple
 import logging
-
+from abc import ABC, abstractmethod
+from collections import namedtuple
 
 logger = logging.getLogger(__name__)
 
@@ -12,14 +11,14 @@ class DependencyNode(ABC):
     """
     Dependency nodes are detect as subclasses from this class, rather than duck-typing for attributes.
     """
-    @abstractproperty
+    @abstractmethod
     def _data(self):
         """
         return actual data (without update)
         """
         pass
 
-    @abstractproperty
+    @abstractmethod
     def _timestamp(self):
         """
         return timestamp
