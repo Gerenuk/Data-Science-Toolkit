@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 __author__ = "Anton Suchaneck"
-__email__ = "anton.suchaneck@ing-diba.de"
+__email__ = "a.suchaneck@gmail.com"
 
 
 class PeriodiBin:

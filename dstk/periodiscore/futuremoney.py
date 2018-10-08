@@ -5,7 +5,7 @@ import numpy as np
 from individual.anton.periodiscore.periodi_date_amount import *
 
 __author__ = "Anton Suchaneck"
-__email__ = "anton.suchaneck@ing-diba.de"
+__email__ = "a.suchaneck@gmail.com"
 
 HOLIDAYS = [dt.datetime(year, month, day)
             for year in [2016, 2017]

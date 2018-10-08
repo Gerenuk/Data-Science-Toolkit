@@ -11,7 +11,7 @@ from individual.anton.periodiscore.periodi_scorer import PeriodiScorer
 from individual.anton.periodiscore.periodi_train import PeriodiTrain
 
 __author__ = "Anton Suchaneck"
-__email__ = "anton.suchaneck@ing-diba.de"
+__email__ = "a.suchaneck@gmail.com"
 
 PointData = namedtuple("PointData", "amount_steps time_steps point")
 
