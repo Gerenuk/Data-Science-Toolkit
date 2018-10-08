@@ -17,7 +17,7 @@ from bokeh.palettes import all_palettes
 from sklearn.ensemble import RandomForestClassifier
 
 __author__ = "Anton Suchaneck"
-__email__ = "anton.suchaneck@ing-diba.de"
+__email__ = "a.suchaneck@gmail.com"
 
 """
 TODO:
