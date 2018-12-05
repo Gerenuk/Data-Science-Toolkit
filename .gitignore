@@ -1,3 +1,4 @@
 **/doc/_build
 **/doc/build
 .idea
+.ipynb_checkpoints
