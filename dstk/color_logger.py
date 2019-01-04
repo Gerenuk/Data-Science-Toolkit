@@ -3,12 +3,12 @@ import logging
 import colorlog
 
 
-def create_color_logger(
+def color_logger(
     file=sys.stdout,
     name=None,
     level="INFO",
-    log_format="%(log_color)s[%(levelname)s]%(white)s %(asctime)s %(name)s:%(funcName)s(L%(lineno)s)%(reset)s %(message)s",
-    date_format="%H:%M",
+    log_format="%(log_color)s[%(levelname)s]%(white)s %(asctime)s %(funcName)s(L%(lineno)s)%(reset)s: %(message)s", # %(name)s (e.g. root)
+    date_format="%H:%M:%S", # %d.%m.%y
 ):
     logger = logging.getLogger(name)
     logger.setLevel(level)
