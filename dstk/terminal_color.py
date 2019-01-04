@@ -1,18 +1,26 @@
 import colorful
 
 
+colorful.use_true.colors()   # did not work in Jupyter on Windows?!
+
+
+class Color:
+    """
+    Colors to use for terminal output
+    e.g. `Color.red("TEXT")`
+    """
+    purple = colorful.purple
+    red = colorful.tomato
+    violet = colorful.violet
+    blue = colorful.cornflowerBlue
+    lightblue = colorful.deepSkyBlue
+    green = colorful.limeGreen
+    yellow = colorful.goldenrod1
+
+
 def color_term_print():
-    colorful.use_true.colors()
-    for color in [
-        "purple",
-        "tomato",
-        "violet",
-        "cornflowerBlue",
-        "deepSkyBlue",
-        "limeGreen",
-        "goldenrod1",
-    ]:
-        print(f"{getattr(colorful, color)('*** TEXT TEXT TEXT *** '+color)}")
+    for color in [col for col in dir(Color) if not col.startswith("__")]:
+        print(f"{getattr(Color, color)('*** TEXT TEXT TEXT *** '+color)}")
 
 
 def print_rgb_colors(filename="/etc/X11/rgb.txt"):
@@ -27,8 +35,6 @@ def print_rgb_colors(filename="/etc/X11/rgb.txt"):
             for line in open(filename).readlines()[1:]
         )
     )
-
-    colorful.use_true_colors()
 
     for col in sorted(set(colors)):
         if col.startswith(("grey", "gray")):

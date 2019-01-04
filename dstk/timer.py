@@ -23,7 +23,7 @@ class Timer:
     def __init__(self):
         self.start_time = time.time()
 
-    def duration(self):
+    def duration(self) -> TimerDuration:
         return TimerDuration(value=time.time() - self.start_time)
 
     def __repr__(self):

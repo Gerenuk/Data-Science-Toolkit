@@ -21,15 +21,19 @@ class FuncCall:
     kwargs: Dict[str, Any]
 
 
+class FuncCallOutcome:
+    pass
+
+
 @dataclass
-class FuncCallResult:
+class FuncCallResult(FuncCallOutcome):
     func_call: FuncCall
     result: Any
     duration: float
 
 
 @dataclass
-class FuncCallException:
+class FuncCallException(FuncCallOutcome):
     func_call: FuncCall
     exception: Any
     duration: float
@@ -53,7 +57,7 @@ class Experiments:
         return cur_func_call_result
 
     @staticmethod
-    def _func_call_result(func_call):
+    def _func_call_result(func_call) -> FuncCallOutcome:
         timer = Timer()
 
         try:
