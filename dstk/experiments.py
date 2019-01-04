@@ -11,6 +11,7 @@ _logger = logging.getLogger(__name__)
 # colorlog
 # product state
 # persistent storage
+# convert experiment_store to pandas DataFrame (args as own field)
 
 
 @dataclass
@@ -44,15 +45,15 @@ class Experiments:
     def __call__(self, func, *args, **kwargs):
         func_call = FuncCall(func=func, args=args, kwargs=kwargs)
 
-        cur_func_call_result = self.func_call_result(func_call)
+        cur_func_call_result = self._func_call_result(func_call)
 
-        self.store_result(cur_func_call_result)
-        self.log(cur_func_call_result)
+        self._store_result(cur_func_call_result)
+        self._log(cur_func_call_result)
 
         return cur_func_call_result
 
     @staticmethod
-    def func_call_result(func_call):
+    def _func_call_result(func_call):
         timer = Timer()
 
         try:
@@ -73,13 +74,13 @@ class Experiments:
                 func_call=func_call, exception=exception, duration=duration
             )
 
-    def store_result(self, func_call_result):
+    def _store_result(self, func_call_result):
         if isinstance(func_call_result, FuncCallResult):
             self.experiment_store.append(func_call_result)
         else:
             self.failed_experiment_store.append(func_call_result)
 
-    def log(self, func_call_result):
+    def _log(self, func_call_result):
         func_name = func_call_result.func_call.func.__name__
         args_text = ", ".join(map(str, func_call_result.func_call.args))
         kwargs_text = ", ".join(
