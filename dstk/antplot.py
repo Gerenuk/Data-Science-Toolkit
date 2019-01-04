@@ -60,6 +60,7 @@ def hist(vals, **kwargs):
     Use with s.pipe(hist)
     """
     import holoviews as hv
+
     return hv.Histogram(np.histogram(vals, bins="auto"), **kwargs)
 
 
@@ -102,20 +103,24 @@ def plot_roc(y_true, *y_preds, **kwargs):  # kwargs as hack for Python 2
 
     y_preds = [y if isinstance(y, np.ndarray) else np.array(y) for y in y_preds]
 
-    for name, y_vals in ([("y_true", y_true)] +
-                         [("y_preds[{}]".format(i), y_pred) for i, y_pred in enumerate(y_preds)]
-    ):
+    for name, y_vals in [("y_true", y_true)] + [
+        ("y_preds[{}]".format(i), y_pred) for i, y_pred in enumerate(y_preds)
+    ]:
         if np.any(np.isnan(y_vals)):
             raise ValueError("Forbidden NaN values found in {}".format(name))
 
     forbidden_ytrue_vals = set(np.unique(y_true)) - {0, 1}
     if forbidden_ytrue_vals:
         raise ValueError(
-            "y_true contains more than just 0 and 1: {}".format(", ".join(map(str, list(forbidden_ytrue_vals)[:10]))))
+            "y_true contains more than just 0 and 1: {}".format(
+                ", ".join(map(str, list(forbidden_ytrue_vals)[:10]))
+            )
+        )
 
     # hack since Python 2 cannot do it
-    names = kwargs.pop("names",
-                       [""] if len(y_preds) == 1 else [str(i) for i in range(len(y_preds))])
+    names = kwargs.pop(
+        "names", [""] if len(y_preds) == 1 else [str(i) for i in range(len(y_preds))]
+    )
     if isinstance(names, str) and len(y_preds) == 1:
         names = [names]
 
@@ -131,7 +136,9 @@ def plot_roc(y_true, *y_preds, **kwargs):  # kwargs as hack for Python 2
     # threshold_color = kwargs.pop("threshold_color", False)
 
     if kwargs:
-        raise ValueError("Unknown arguments to plot_roc: {}".format(sorted(kwargs.keys())))
+        raise ValueError(
+            "Unknown arguments to plot_roc: {}".format(sorted(kwargs.keys()))
+        )
 
     if names is None:
         names = []
@@ -140,14 +147,17 @@ def plot_roc(y_true, *y_preds, **kwargs):  # kwargs as hack for Python 2
     numpos = np.sum(y_true)
     numneg = len(y_true) - numpos
 
-    hover = HoverTool(tooltips=[("Recall", "@y"),
-                                ("Fallout", "@x"),
-                                ("Precision", "@precs"),
-                                ("Accuracy", "@accs"),
-                                ("Count", "@point_counts"),
-                                ("Count end", "@remaining_counts"),
-                                ("Threshold", "@thresholds"),
-                                ])
+    hover = HoverTool(
+        tooltips=[
+            ("Recall", "@y"),
+            ("Fallout", "@x"),
+            ("Precision", "@precs"),
+            ("Accuracy", "@accs"),
+            ("Count", "@point_counts"),
+            ("Count end", "@remaining_counts"),
+            ("Threshold", "@thresholds"),
+        ]
+    )
 
     show = fig is None
 
@@ -155,8 +165,9 @@ def plot_roc(y_true, *y_preds, **kwargs):  # kwargs as hack for Python 2
         fig = figure()
 
     if not hasattr(fig, "colorcycle_"):
-        fig.__dict__["colorcycle_"] = itertools.chain(colors, itertools.cycle(
-            bokeh.palettes.Set1_9))  # hack; otherwise Bokeh complains
+        fig.__dict__["colorcycle_"] = itertools.chain(
+            colors, itertools.cycle(bokeh.palettes.Set1_9)
+        )  # hack; otherwise Bokeh complains
 
     if not any(isinstance(tool, HoverTool) for tool in fig.tools):
         fig.add_tools(hover)
@@ -166,7 +177,9 @@ def plot_roc(y_true, *y_preds, **kwargs):  # kwargs as hack for Python 2
     fig.line([0, 1], [0, 1], line_dash="dotted", line_color="black")  # Random diagonal
 
     for y_pred, name, color in zip(y_preds, names, fig.colorcycle_):
-        idx_order = y_pred.argsort() if not large_scores_first else y_pred.argsort()[::-1]
+        idx_order = (
+            y_pred.argsort() if not large_scores_first else y_pred.argsort()[::-1]
+        )
 
         ordered_y_true = y_true[idx_order]
         cnt_ys = np.cumsum(ordered_y_true)
@@ -191,48 +204,52 @@ def plot_roc(y_true, *y_preds, **kwargs):  # kwargs as hack for Python 2
         point_counts_plot = point_counts[idxs]
         remaining_counts_plot = remaining_counts[idxs]
 
-        data = ColumnDataSource(data=dict(x=x_plot,
-                                          y=y_plot,
-                                          thresholds=thresholds_plot,
-                                          point_counts=point_counts_plot,
-                                          remaining_counts=remaining_counts_plot,
-                                          precs=prec_plot,
-                                          accs=acc_plot,
-                                          ))
+        data = ColumnDataSource(
+            data=dict(
+                x=x_plot,
+                y=y_plot,
+                thresholds=thresholds_plot,
+                point_counts=point_counts_plot,
+                remaining_counts=remaining_counts_plot,
+                precs=prec_plot,
+                accs=acc_plot,
+            )
+        )
 
         name += " auc:{:.2f}".format(roc_auc_score(y_true, y_pred))  # calc yourself?
 
-        fig.line("x", "y",
-                 source=data,
-                 line_width=2,
-                 line_color=color,
-                 # line_color="thresholds",
-                 # color_mapper=LinearColorMapper(),
-                 legend=name,
-                 )
+        fig.line(
+            "x",
+            "y",
+            source=data,
+            line_width=2,
+            line_color=color,
+            # line_color="thresholds",
+            # color_mapper=LinearColorMapper(),
+            legend=name,
+        )
 
     fig.legend.location = "center_right"
 
     def put_label_on_line(x_end, **label_args):
         if x_end < 1:
-            fig.add_layout(
-                Label(x=x_end, y=1 - 0.025, **label_args))
+            fig.add_layout(Label(x=x_end, y=1 - 0.025, **label_args))
         else:
             fig.add_layout(Label(x=1, y=1 / x_end, text_align="right", **label_args))
 
     for prec in precs:
         x_end = (1 - prec) / prec * numneg / numpos
         fig.line([0, x_end], [0, 1], line_dash="dashed", line_color="orange")
-        put_label_on_line(x_end,
-                          text="prec" + str(prec),
-                          text_color="orange",
-                          text_font_size="8pt")
+        put_label_on_line(
+            x_end, text="prec" + str(prec), text_color="orange", text_font_size="8pt"
+        )
 
     if accs is True:
         x_end = numneg / numpos
         color = "magenta"
-        fig.line([0, x_end], [0, 1], line_dash="dashed", line_color=color,
-                 legend="Accuracy")
+        fig.line(
+            [0, x_end], [0, 1], line_dash="dashed", line_color=color, legend="Accuracy"
+        )
     elif accs:
         for acc in accs:
             y_beg = (acc * (numpos + numneg) - numneg) / numpos
@@ -240,27 +257,31 @@ def plot_roc(y_true, *y_preds, **kwargs):  # kwargs as hack for Python 2
             x_end = (1 - y_beg) / slope
             color = "magenta"
             fig.line([0, x_end], [y_beg, 1], line_color=color, line_dash="dashed")
-            put_label_on_line(x_end,
-                              text="acc" + str(acc),
-                              text_color=color,
-                              text_font_size="8pt",
-                              )
+            put_label_on_line(
+                x_end, text="acc" + str(acc), text_color=color, text_font_size="8pt"
+            )
 
     for score in scores:
         x_end = 1 / score * numneg / numpos
         color = "green"
         fig.line([0, x_end], [0, 1], line_dash="dashed", line_color=color)
-        put_label_on_line(x_end,
-                          text="scr" + str(score),
-                          text_color=color,
-                          text_font_size="8pt")
+        put_label_on_line(
+            x_end, text="scr" + str(score), text_color=color, text_font_size="8pt"
+        )
 
     for num_pred_pos_el in numpreds:
         y_beg = num_pred_pos_el / numpos
         x_end = num_pred_pos_el / numneg
         fig.line([0, x_end], [y_beg, 0], line_dash="dashed", line_color="grey")
         fig.add_layout(
-            Label(x=x_end, y=0, text=("#pred" + str(num_pred_pos_el)), text_color="grey", text_font_size="8pt"))
+            Label(
+                x=x_end,
+                y=0,
+                text=("#pred" + str(num_pred_pos_el)),
+                text_color="grey",
+                text_font_size="8pt",
+            )
+        )
 
     fig.x_range = Range1d(0, 1)
     fig.y_range = Range1d(0, 1)
@@ -271,11 +292,18 @@ def plot_roc(y_true, *y_preds, **kwargs):  # kwargs as hack for Python 2
         bokeh.io.show(fig)  # needed or later or show=True parameter?
 
 
-def plot_cumu(data, weights=None, source=None,
-              data_label=None, weights_label=None,
-              tooltip_cols=tuple(),
-              norm_weights=False,
-              max_pts=DEFAULT_MAX_PTS, show=True, **plotargs):
+def plot_cumu(
+    data,
+    weights=None,
+    source=None,
+    data_label=None,
+    weights_label=None,
+    tooltip_cols=tuple(),
+    norm_weights=False,
+    max_pts=DEFAULT_MAX_PTS,
+    show=True,
+    **plotargs,
+):
     """
     Sorts by data and cumulatively sums weights.
 
@@ -335,19 +363,21 @@ def plot_cumu(data, weights=None, source=None,
 
     # cntr[ceil((data_el - data_min) / data_max_min * max_pts) if data_el > data_min else 1] += weight
 
-    tooltip_col_map = {col_name: "col" + str(i) for i, col_name in enumerate(tooltip_cols)}
+    tooltip_col_map = {
+        col_name: "col" + str(i) for i, col_name in enumerate(tooltip_cols)
+    }
 
-    tooltips = [(weights_label, "@y"),
-                (data_label, "@x"),
-                ] + [
-                   (col_name, "@" + tooltip_col_map[col_name]) for col_name in tooltip_cols
-               ]
+    tooltips = [(weights_label, "@y"), (data_label, "@x")] + [
+        (col_name, "@" + tooltip_col_map[col_name]) for col_name in tooltip_cols
+    ]
 
     hover = HoverTool(tooltips=tooltips)
 
-    fig = figure(x_axis_label=data_label,
-                 y_axis_label=weights_label,
-                 tools=[hover] + DEFAULT_BOKEH_TOOLS)
+    fig = figure(
+        x_axis_label=data_label,
+        y_axis_label=weights_label,
+        tools=[hover] + DEFAULT_BOKEH_TOOLS,
+    )
 
     idxs = thin_out_idxs(df[data], max_pts)
     x_plot_thin = df[data][idxs]
@@ -367,12 +397,20 @@ def plot_cumu(data, weights=None, source=None,
     return fig
 
 
-def plot_conc(data, weights=None, source=None,
-              data_label=None, weights_label=None,
-              norm_data=False, norm_weights=False,
-              tooltip_cols=tuple(),
-              show=True, largest_first=True, max_pts=DEFAULT_MAX_PTS,
-              **plotargs):
+def plot_conc(
+    data,
+    weights=None,
+    source=None,
+    data_label=None,
+    weights_label=None,
+    norm_data=False,
+    norm_weights=False,
+    tooltip_cols=tuple(),
+    show=True,
+    largest_first=True,
+    max_pts=DEFAULT_MAX_PTS,
+    **plotargs,
+):
     """
     Will sort by data and accumulate on both data and weights
 
@@ -442,19 +480,21 @@ def plot_conc(data, weights=None, source=None,
         df[data + "_cumul"] = df[data + "_cumul"] / df[data + "_cumul"].max()
         data_label = "Norm. " + data_label
 
-    tooltip_col_map = {col_name: "col" + str(i) for i, col_name in enumerate(tooltip_cols)}
+    tooltip_col_map = {
+        col_name: "col" + str(i) for i, col_name in enumerate(tooltip_cols)
+    }
 
-    tooltips = [(data_label, "@y"),
-                (weights_label, "@x"),
-                ] + [
-                   (col_name, "@" + tooltip_col_map[col_name]) for col_name in tooltip_cols
-               ]
+    tooltips = [(data_label, "@y"), (weights_label, "@x")] + [
+        (col_name, "@" + tooltip_col_map[col_name]) for col_name in tooltip_cols
+    ]
 
     hover = HoverTool(tooltips=tooltips)
 
-    fig = figure(x_axis_label=weights_label,
-                 y_axis_label=data_label,
-                 tools=[hover] + DEFAULT_BOKEH_TOOLS)
+    fig = figure(
+        x_axis_label=weights_label,
+        y_axis_label=data_label,
+        tools=[hover] + DEFAULT_BOKEH_TOOLS,
+    )
 
     idxs = thin_out_idxs(df[weights + "_cumul"], max_pts)
     x_plot_thin = df[weights + "_cumul"][idxs]
@@ -507,12 +547,18 @@ def conf_mat(y_true, y_pred, reverse=True):
     from ipy_table import make_table, set_cell_style, apply_theme
 
     df = pd.DataFrame({"pred": y_pred, "true": y_true})
-    cm = pd.pivot_table(df, index="true", columns="pred", aggfunc=len).fillna(0).astype(int)
+    cm = (
+        pd.pivot_table(df, index="true", columns="pred", aggfunc=len)
+        .fillna(0)
+        .astype(int)
+    )
     classes = sorted(cm.index | cm.columns, reverse=reverse)
     cm = cm.reindex(classes, classes, fill_value=0)
 
     precs = pd.Series([cm.ix[c, c] / cm.ix[c, :].sum() for c in classes], index=classes)
-    recall = pd.Series([cm.ix[c, c] / cm.ix[:, c].sum() for c in classes], index=classes)
+    recall = pd.Series(
+        [cm.ix[c, c] / cm.ix[:, c].sum() for c in classes], index=classes
+    )
     accuracy = sum(cm.ix[c, c] for c in classes) / cm.sum().sum()
 
     tot_true = cm.sum(axis=0)
@@ -521,24 +567,31 @@ def conf_mat(y_true, y_pred, reverse=True):
     table_data = [["Pred ->"] + classes + ["Total", "Recall"]]
     total = cm.sum().sum()
 
-    for class_j, field_type_j in [(c, "class") for c in classes] + [(None, "total"), (None, "precision")]:
+    for class_j, field_type_j in [(c, "class") for c in classes] + [
+        (None, "total"),
+        (None, "precision"),
+    ]:
         table_row = []
 
-        for class_i, field_type_i in [(None, "name")] + [(c, "class") for c in classes] + [(None, "total"),
-                                                                                           (None, "recall")]:
-            val = {("name", "class"): class_j,
-                   ("name", "precision"): "Precision",
-                   ("name", "total"): "Total",
-                   ("class", "class"): cm.ix[class_i, class_j],
-                   ("precision", "class"): "{:.1%}".format(precs[class_i]),
-                   ("precision", "total"): "",
-                   ("precision", "recall"): "{:.1%}".format(accuracy),
-                   ("recall", "class"): "{:.1%}".format(recall[class_j]),
-                   ("recall", "total"): "",
-                   ("total", "class"): tot_true[class_j],
-                   ("class", "total"): tot_pred[class_i],
-                   ("total", "total"): total,
-                   }[field_type_i, field_type_j]
+        for class_i, field_type_i in (
+            [(None, "name")]
+            + [(c, "class") for c in classes]
+            + [(None, "total"), (None, "recall")]
+        ):
+            val = {
+                ("name", "class"): class_j,
+                ("name", "precision"): "Precision",
+                ("name", "total"): "Total",
+                ("class", "class"): cm.ix[class_i, class_j],
+                ("precision", "class"): "{:.1%}".format(precs[class_i]),
+                ("precision", "total"): "",
+                ("precision", "recall"): "{:.1%}".format(accuracy),
+                ("recall", "class"): "{:.1%}".format(recall[class_j]),
+                ("recall", "total"): "",
+                ("total", "class"): tot_true[class_j],
+                ("class", "total"): tot_pred[class_i],
+                ("total", "total"): total,
+            }[field_type_i, field_type_j]
 
             table_row.append(val)
 
@@ -569,8 +622,11 @@ def minauc(y_true, y_score, first="high", title="", show=True, trim_to=None):
     trim_to: Limit plot (x-axis) to a range to show roughly that ratio of the data (plus extension left/right)
     """
     assert first in ["high", "low"], 'Parameter `first` can only be "high" or "low"'
-    assert len(y_true) == len(y_score), "y_true length {} and y_score length {} are different size".format(len(y_true),
-                                                                                                           len(y_score))
+    assert len(y_true) == len(
+        y_score
+    ), "y_true length {} and y_score length {} are different size".format(
+        len(y_true), len(y_score)
+    )
 
     if hasattr(y_score, "name"):
         score_name = y_score.name
@@ -579,12 +635,18 @@ def minauc(y_true, y_score, first="high", title="", show=True, trim_to=None):
     else:
         score_name = "Score"
 
-    df = pd.DataFrame({"y_true": y_true, "y_score": y_score, "count": 1})  # using pandas instead of numpy for groupby
+    df = pd.DataFrame(
+        {"y_true": y_true, "y_score": y_score, "count": 1}
+    )  # using pandas instead of numpy for groupby
 
     N = len(df)
     cnts = df.groupby("y_true").size().to_dict()
-    assert cnts.keys() == {0, 1}, "y_true should only contain 0 or 1, however {} different values found".format(
-        len(cnts))
+    assert cnts.keys() == {
+        0,
+        1,
+    }, "y_true should only contain 0 or 1, however {} different values found".format(
+        len(cnts)
+    )
 
     df_grouped = df.groupby("y_score").sum().reset_index()
     df_grouped = df_grouped.sort_values("y_score", ascending=(first == "low"))
@@ -592,44 +654,57 @@ def minauc(y_true, y_score, first="high", title="", show=True, trim_to=None):
     df_grouped["cumu_y_true"] = df_grouped["y_true"].cumsum()
     df_grouped["cumu_count"] = df_grouped["count"].cumsum()
 
-    recfalls = (df_grouped["cumu_y_true"] - df_grouped["cumu_count"] * cnts[1] / N) * N / cnts[0] / cnts[1]
+    recfalls = (
+        (df_grouped["cumu_y_true"] - df_grouped["cumu_count"] * cnts[1] / N)
+        * N
+        / cnts[0]
+        / cnts[1]
+    )
     aucs = (recfalls + 1) / 2
 
     pos_max = aucs.argmax()
-    title += " {:.3f} @ {:.4g}".format(aucs.iloc[pos_max], df_grouped.iloc[pos_max]["y_score"])
+    title += " {:.3f} @ {:.4g}".format(
+        aucs.iloc[pos_max], df_grouped.iloc[pos_max]["y_score"]
+    )
 
-    fig = figure(x_axis_label="N",
-                 y_axis_label="minAUC",
-                 title=title,
-                 )
+    fig = figure(x_axis_label="N", y_axis_label="minAUC", title=title)
 
     fig.title.align = "center"
 
-    data = ColumnDataSource({"n": df_grouped["cumu_count"],
-                             "score": df_grouped["y_score"],
-                             "recall": df_grouped["cumu_count"] / N,
-                             "precision": df_grouped["cumu_y_true"] / df_grouped["cumu_count"],
-                             "minauc": aucs,
-                             "inv_n": N + df_grouped["count"] - df_grouped["cumu_count"],
-                             "inv_recall": (N + df_grouped["count"] - df_grouped["cumu_count"]) / N,
-                             "inv_precision": (cnts[1] + df_grouped["y_true"] - df_grouped["cumu_y_true"]) / (
-                                     N + df_grouped["count"] - df_grouped["cumu_count"]),
-                             })
+    data = ColumnDataSource(
+        {
+            "n": df_grouped["cumu_count"],
+            "score": df_grouped["y_score"],
+            "recall": df_grouped["cumu_count"] / N,
+            "precision": df_grouped["cumu_y_true"] / df_grouped["cumu_count"],
+            "minauc": aucs,
+            "inv_n": N + df_grouped["count"] - df_grouped["cumu_count"],
+            "inv_recall": (N + df_grouped["count"] - df_grouped["cumu_count"]) / N,
+            "inv_precision": (
+                cnts[1] + df_grouped["y_true"] - df_grouped["cumu_y_true"]
+            )
+            / (N + df_grouped["count"] - df_grouped["cumu_count"]),
+        }
+    )
 
     fig.line("n", "minauc", source=data)
 
-    fig.add_tools(HoverTool(tooltips=[("minAUC", "@minauc"),
-                                      (score_name, "@score"),
-                                      ("N", "@n"),
-                                      ("Recall", "@recall"),
-                                      ("Precision", "@precision"),
-                                      ("invN", "@inv_n"),
-                                      ("invRecall", "@inv_recall"),
-                                      ("invPrecision", "@inv_precision"),
-                                      ],
-                            attachment="vertical",
-                            line_policy="nearest",
-                            ))
+    fig.add_tools(
+        HoverTool(
+            tooltips=[
+                ("minAUC", "@minauc"),
+                (score_name, "@score"),
+                ("N", "@n"),
+                ("Recall", "@recall"),
+                ("Precision", "@precision"),
+                ("invN", "@inv_n"),
+                ("invRecall", "@inv_recall"),
+                ("invPrecision", "@inv_precision"),
+            ],
+            attachment="vertical",
+            line_policy="nearest",
+        )
+    )
 
     if trim_to is not None:
         num_1s = cnts[1]
@@ -676,7 +751,9 @@ class bofig:
     def __getattr__(self, name):
         return partial(self._call_fig, getattr(self.fig, name))
 
-    def _call_fig(self, plot_func, *args, max_pts=DEFAULT_MAX_PTS, tooltips=None, **kwargs):
+    def _call_fig(
+        self, plot_func, *args, max_pts=DEFAULT_MAX_PTS, tooltips=None, **kwargs
+    ):
         """
         assumes DataFrame for "source"
         """
@@ -686,21 +763,28 @@ class bofig:
         if plot_func.__name__ == "scatter":
             param_names = ["x", "y", "size", "marker", "color"]
         else:
-            param_names = list(p.name for p in itertools.takewhile(lambda p: p.kind == p.POSITIONAL_OR_KEYWORD,
-                                                                   inspect.signature(plot_func).parameters.values()))
+            param_names = list(
+                p.name
+                for p in itertools.takewhile(
+                    lambda p: p.kind == p.POSITIONAL_OR_KEYWORD,
+                    inspect.signature(plot_func).parameters.values(),
+                )
+            )
 
         args = list(args)  # to modify
 
         for i, (param_name, value) in enumerate(zip(param_names, args)):
             if param_name in {"x", "y"}:
-                if (not isinstance(value, str) and
-                        isinstance(value, Iterable)):
+                if not isinstance(value, str) and isinstance(value, Iterable):
                     args[i] = param_name
                     kwargs["source"][param_name] = value
                 elif callable(value) and "source" in kwargs:
                     data_series = value(kwargs["source"])
-                    data_name = (data_series.name if hasattr(data_series, "name") and data_series.name is not None
-                    else param_name)
+                    data_name = (
+                        data_series.name
+                        if hasattr(data_series, "name") and data_series.name is not None
+                        else param_name
+                    )
                     args[i] = data_name
                     kwargs["source"][data_name] = data_series
 
@@ -718,12 +802,16 @@ class bofig:
         if tooltips is None:
             tooltips = sorted(kwargs["source"].columns)
 
-        kwargs["source"] = ColumnDataSource(kwargs["source"])  # otherwise legend=".." fails due to bool(df)
+        kwargs["source"] = ColumnDataSource(
+            kwargs["source"]
+        )  # otherwise legend=".." fails due to bool(df)
 
         plot = plot_func(*args, **kwargs)
 
         if tooltips:  # could be empty
-            tooltips = [t if not isinstance(t, str) else (t, "@{}".format(t)) for t in tooltips]
+            tooltips = [
+                t if not isinstance(t, str) else (t, "@{}".format(t)) for t in tooltips
+            ]
             self.fig.add_tools(HoverTool(tooltips=tooltips, renderers=[plot]))
 
     def show(self):
@@ -733,11 +821,11 @@ class bofig:
 def plot_calc_featimp(X, y, feature_names=None, n_jobs=-1, num_max_show=50):
     if feature_names is None:
         try:
-            feature_names=X.columns
+            feature_names = X.columns
         except AttributeError:
             raise ValueError("Please provide feature_names= or use data with X.columns")
 
-    clf=RandomForestClassifier(n_estimators=100, max_features="auto", n_jobs=n_jobs)
+    clf = RandomForestClassifier(n_estimators=100, max_features="auto", n_jobs=n_jobs)
     clf.fit(X, y)
 
     ax = plot_featimp(clf, feature_names, num_max_show=num_max_show)
@@ -746,41 +834,41 @@ def plot_calc_featimp(X, y, feature_names=None, n_jobs=-1, num_max_show=50):
 
 def plot_featimp(clf, feature_names, ax=None, num_max_show=50):
     if ax is None:
-        fig, ax=plt.subplots(figsize=(10, len(feature_names)*0.3))
+        fig, ax = plt.subplots(figsize=(10, len(feature_names) * 0.3))
 
-    feat_imps = sorted(zip(feature_names, clf.feature_importances_), key=itemgetter(1), reverse=True)
+    feat_imps = sorted(
+        zip(feature_names, clf.feature_importances_), key=itemgetter(1), reverse=True
+    )
 
     feat_imps = feat_imps[:num_max_show]
     num_show = len(feat_imps)
 
-    yticks=list(range(num_show))
-    show_feat_names=[feat_name for feat_name, _ in feat_imps]
-    if len(feature_names)>num_max_show:
+    yticks = list(range(num_show))
+    show_feat_names = [feat_name for feat_name, _ in feat_imps]
+    if len(feature_names) > num_max_show:
         yticks.append(-1)
         show_feat_names.append(f"... {len(feature_names)-num_max_show} more")
 
-
-    color=plt.rcParams['axes.prop_cycle'].by_key()['color'][0]
+    color = plt.rcParams["axes.prop_cycle"].by_key()["color"][0]
     for i, (feat_name, imp) in enumerate(feat_imps):
-        y_pos=num_show - i - 1
+        y_pos = num_show - i - 1
         ax.plot([0, imp], [y_pos, y_pos], color=color)
         ax.scatter([imp], [y_pos], color=color)
 
     ax.set_yticks(yticks)
     ax.set_yticklabels(show_feat_names, fontdict={"weight": "bold"})
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_visible(False)
+    ax.spines["left"].set_visible(False)
     ax.grid("on", axis="x", linestyle=":")
     ax.set_xticklabels([])
-    ax.set_ylim((min(yticks)-0.5, max(yticks)+0.5))
+    ax.set_ylim((min(yticks) - 0.5, max(yticks) + 0.5))
 
     return ax
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     import random
 
     N = 1000

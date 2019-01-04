@@ -6,6 +6,7 @@ class ExpSmooth:
     https://www.statsmodels.org/dev/generated/statsmodels.tsa.holtwinters.ExponentialSmoothing.html
     fitted_model / results : https://www.statsmodels.org/dev/generated/statsmodels.tsa.holtwinters.HoltWintersResults.html
     """
+
     model_param_names = {
         "trend",
         "damped",

@@ -44,10 +44,10 @@ def table_values_to_dataframe(table_values, num_header_rows, num_index_cols):
     ]
 
     if index_names is None:
-        col_index=None
-    elif len(col_index_values)>=2:
+        col_index = None
+    elif len(col_index_values) >= 2:
         col_index = pd.MultiIndex.from_arrays(col_index_values, names=index_names)
-    elif len(col_index_values)==1:
+    elif len(col_index_values) == 1:
         col_index = pd.Index(col_index_values[0], names=index_names)
     else:
         raise ValueError(f"{col_index_values}")
@@ -102,12 +102,13 @@ def read_excel(
 
 if __name__ == "__main__":
     from pathlib import Path
-    #from sqlalchemy import create_engine    # Only for writing to a database
+
+    # from sqlalchemy import create_engine    # Only for writing to a database
 
     data_dir = Path(r"E:\Usecases\uc150420\Daten VWN")
-    #engine = create_engine(
+    # engine = create_engine(
     #    "postgresql://uc150420:T#Cross19@postgres9.vwdl.lan:5432/usecases"
-    #)
+    # )
 
     htg_dfs = []
 
@@ -174,7 +175,8 @@ if __name__ == "__main__":
     carpark_df.to_pickle(data_dir.joinpath("carpark.pkl"))
 
     carpark_df.rename(
-        columns={"MARKT_NAME": "land", "JAHR": "jahr", "Gesamt": "carpark"}, inplace=True
+        columns={"MARKT_NAME": "land", "JAHR": "jahr", "Gesamt": "carpark"},
+        inplace=True,
     )
 
     htg_df1 = htg_df.rename(
@@ -194,10 +196,7 @@ if __name__ == "__main__":
 
     htg_df1.to_pickle("umsatz_anzahl_clean.pkl")
 
-    carpark_land = (
-        carpark_df.groupby(["land", "jahr"], as_index=False)
-        .sum()
-    )
+    carpark_land = carpark_df.groupby(["land", "jahr"], as_index=False).sum()
 
     htg_df2 = htg_df1.merge(carpark_land[["land", "jahr", "carpark"]], how="left")
 

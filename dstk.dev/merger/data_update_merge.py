@@ -37,12 +37,18 @@ class CsvSrc:
     has .data_id and .is_final
     """
 
-    def __init__(self, filename, is_final, csv_format, file_format=None, use_dictreader=True):
+    def __init__(
+        self, filename, is_final, csv_format, file_format=None, use_dictreader=True
+    ):
         self.is_final = is_final
         self.data_id = os.path.basename(filename)
         self.filename = filename
         self.csv_format = csv_format
-        self.file_format = file_format if file_format is not None else dict(newline="", encoding="utf8")
+        self.file_format = (
+            file_format
+            if file_format is not None
+            else dict(newline="", encoding="utf8")
+        )
         self.use_dictreader = use_dictreader
 
     def __str__(self):
@@ -65,7 +71,9 @@ class CsvCacheList:
     def __init__(self, filename):
         self.filename = filename
         if os.path.exists(self.filename):
-            self.cache_content = set(line[:-1] for line in open(self.filename, encoding="utf8"))
+            self.cache_content = set(
+                line[:-1] for line in open(self.filename, encoding="utf8")
+            )
         else:
             self.cache_content = set()
         self.cache_filelist_writer = open(self.filename, "a+", encoding="utf8")
@@ -103,9 +111,17 @@ class CacheWriters:
             if data_id not in self.cache_filelist:
                 self.cache_filelist.add(data_id)
                 writer_L = [dest.final_writer() for dest in self.dest_L]
-                logging.debug("Final source {} written to cache since it is not in cache".format(data_id))
+                logging.debug(
+                    "Final source {} written to cache since it is not in cache".format(
+                        data_id
+                    )
+                )
             else:
-                logging.debug("Not writing final source {} since it is already in cache".format(data_id))
+                logging.debug(
+                    "Not writing final source {} since it is already in cache".format(
+                        data_id
+                    )
+                )
                 return None
         else:
             writer_L = [dest.writer() for dest in self.dest_L]
@@ -125,13 +141,28 @@ class CsvDestWriter:
     Returns appropriate writers (having .writerow()) on .writer() or final_writer()
     """
 
-    def __init__(self, dest_filename, header, csv_format=None, cache_filename=None, file_format=None, cache_backup=None,
-                 use_dictwriter=True):
+    def __init__(
+        self,
+        dest_filename,
+        header,
+        csv_format=None,
+        cache_filename=None,
+        file_format=None,
+        cache_backup=None,
+        use_dictwriter=True,
+    ):
         self.dest_filename = dest_filename
-        self.cache_filename = cache_filename if cache_filename is not None else "{}_CACHE{}".format(
-            *os.path.splitext(self.dest_filename))
+        self.cache_filename = (
+            cache_filename
+            if cache_filename is not None
+            else "{}_CACHE{}".format(*os.path.splitext(self.dest_filename))
+        )
         self.header = header
-        self.file_format = file_format if file_format is not None else dict(newline="", encoding="utf8")
+        self.file_format = (
+            file_format
+            if file_format is not None
+            else dict(newline="", encoding="utf8")
+        )
         self.csv_format = csv_format if csv_format is not None else dict(delimiter=";")
         if cache_backup is not None:
             root, ext = os.path.splitext(self.cache_filename)
@@ -156,15 +187,22 @@ class CsvDestWriter:
     def final_writer(self):
         if self.cache_copied:
             raise ValueError(
-                "Cannot write_final_row() after the cache has already been copied (due to write_row()). Put all write_row() at the end.")
+                "Cannot write_final_row() after the cache has already been copied (due to write_row()). Put all write_row() at the end."
+            )
 
         assert self.dest_writer is None
 
         if self.cache_writer is None:
-            if self.cache_backup_filename is not None and os.path.exists(self.cache_filename):
-                logging.debug("Making cache backup {}".format(self.cache_backup_filename))
+            if self.cache_backup_filename is not None and os.path.exists(
+                self.cache_filename
+            ):
+                logging.debug(
+                    "Making cache backup {}".format(self.cache_backup_filename)
+                )
                 copy_file(self.cache_filename, self.cache_backup_filename)
-            self.cache_file, self.cache_writer = self._open_file_with_header(self.cache_filename)
+            self.cache_file, self.cache_writer = self._open_file_with_header(
+                self.cache_filename
+            )
 
         return self.cache_writer
 
@@ -174,7 +212,9 @@ class CsvDestWriter:
         if self.dest_writer is None:
             if os.path.exists(self.cache_filename):
                 self._copy_cache()
-            self.dest_file, self.dest_writer = self._open_file_with_header(self.dest_filename)
+            self.dest_file, self.dest_writer = self._open_file_with_header(
+                self.dest_filename
+            )
 
         assert self.cache_writer is None
 
@@ -217,7 +257,9 @@ class CsvDestWriter:
             self.dest_file.close()
 
 
-def glob_csv_sources(final_glob_filename, part_glob_filename, row_transform, csv_format):  # currently unused
+def glob_csv_sources(
+    final_glob_filename, part_glob_filename, row_transform, csv_format
+):  # currently unused
     result = []
     for filename in glob.glob(final_glob_filename):
         result.append(CsvSrc(filename, row_transform, True, csv_format))
@@ -238,13 +280,21 @@ def csv_source_part_last(filename_IL, csv_format, use_dictreader=True):
             continue
         for filename in filename_sorted_L[:-1]:
             logging.debug("Adding {} as final".format(filename))
-            result.append(CsvSrc(filename, True, csv_format, use_dictreader=use_dictreader))
+            result.append(
+                CsvSrc(filename, True, csv_format, use_dictreader=use_dictreader)
+            )
         logging.debug("Adding {} as part".format(filename_sorted_L[-1]))
-        result_part.append(CsvSrc(filename_sorted_L[-1], False, csv_format, use_dictreader=use_dictreader))
+        result_part.append(
+            CsvSrc(
+                filename_sorted_L[-1], False, csv_format, use_dictreader=use_dictreader
+            )
+        )
     return result + result_part
 
 
-def csv_source_part_regex(filename_L, regex, csv_format, file_format=None, use_dictreader=True):
+def csv_source_part_regex(
+    filename_L, regex, csv_format, file_format=None, use_dictreader=True
+):
     result = []
     result_part = []
     for filename in filename_L:
@@ -252,10 +302,25 @@ def csv_source_part_regex(filename_L, regex, csv_format, file_format=None, use_d
         if m:
             logging.debug("Adding {} as part".format(filename))
             result_part.append(
-                CsvSrc(filename, False, csv_format, file_format=file_format, use_dictreader=use_dictreader))
+                CsvSrc(
+                    filename,
+                    False,
+                    csv_format,
+                    file_format=file_format,
+                    use_dictreader=use_dictreader,
+                )
+            )
         else:
             logging.debug("Adding {} as final".format(filename))
-            result.append(CsvSrc(filename, True, csv_format, file_format=file_format, use_dictreader=use_dictreader))
+            result.append(
+                CsvSrc(
+                    filename,
+                    True,
+                    csv_format,
+                    file_format=file_format,
+                    use_dictreader=use_dictreader,
+                )
+            )
     return result + result_part
 
 
@@ -265,29 +330,47 @@ def check_cache(src_list, cache_writers):
 
     ids_too_many = dest_ids - src_ids
     if ids_too_many:
-        print("ERROR: Inconsistent ID set in source filenames and {}".format(cache_writers.cache_filelist.filename))
+        print(
+            "ERROR: Inconsistent ID set in source filenames and {}".format(
+                cache_writers.cache_filelist.filename
+            )
+        )
         print("Too many in cache list: {}".format(", ".join(ids_too_many)))
         input("Press ENTER")
 
-    total_length = sum(len(src) for src in src_list if src.is_final and src.data_id in cache_writers.cache_filelist)
+    total_length = sum(
+        len(src)
+        for src in src_list
+        if src.is_final and src.data_id in cache_writers.cache_filelist
+    )
     for dest in cache_writers.dest_L:
-        cache_length = file_line_number(open(dest.cache_filename, **dest.file_format)) - 1
+        cache_length = (
+            file_line_number(open(dest.cache_filename, **dest.file_format)) - 1
+        )
         if cache_length > total_length:
-            print("ERROR: Inconsistent cache lengths (sources: {}, cachefile {}: {})".format(total_length,
-                                                                                             dest.cache_filename,
-                                                                                             cache_length))
+            print(
+                "ERROR: Inconsistent cache lengths (sources: {}, cachefile {}: {})".format(
+                    total_length, dest.cache_filename, cache_length
+                )
+            )
             input("Press ENTER")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    filename_fact = lambda x: os.path.join(r"\\SW-FRATHC-FIL01\USERS-DE$\T1063588\Desktop\csvtest", x)
+    filename_fact = lambda x: os.path.join(
+        r"\\SW-FRATHC-FIL01\USERS-DE$\T1063588\Desktop\csvtest", x
+    )
 
-    cache_writers = CacheWriters(CsvCacheList(filename_fact("cache_filelist.txt")),
-                                 CsvDestWriter(filename_fact("dest.txt"), ["A", "B"]))
+    cache_writers = CacheWriters(
+        CsvCacheList(filename_fact("cache_filelist.txt")),
+        CsvDestWriter(filename_fact("dest.txt"), ["A", "B"]),
+    )
 
-    srcs = csv_source_part_regex(glob.glob(filename_fact("d*.csv")), "part", dict(delimiter=";"))
+    srcs = csv_source_part_regex(
+        glob.glob(filename_fact("d*.csv")), "part", dict(delimiter=";")
+    )
 
     check_cache(srcs, cache_writers)
     import sys
@@ -306,4 +389,7 @@ if __name__ == '__main__':
     import itertools as itoo
 
     assert set(open(filename_fact("dest.txt"))) - set(["\n"]) == set(
-        itoo.chain.from_iterable(list(open(filename)) for filename in glob.glob(filename_fact("d*.csv")))) - set(["\n"])
+        itoo.chain.from_iterable(
+            list(open(filename)) for filename in glob.glob(filename_fact("d*.csv"))
+        )
+    ) - set(["\n"])

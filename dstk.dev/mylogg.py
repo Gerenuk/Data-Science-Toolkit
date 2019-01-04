@@ -19,12 +19,19 @@ std_logger = logging.getLogger(__name__)
 
 
 class ExcSafe:
-    def __init__(self, catch_exc_type=Exception, logger_func=std_logger.warning, name=None, stop_exception=True, show_trace_level_num=1):
+    def __init__(
+        self,
+        catch_exc_type=Exception,
+        logger_func=std_logger.warning,
+        name=None,
+        stop_exception=True,
+        show_trace_level_num=1,
+    ):
         self.catch_exc_type = catch_exc_type
         self.logger_func = logger_func
         self.name = name
-        self.stop_exception=stop_exception
-        self.show_trace_level_num=show_trace_level_num
+        self.stop_exception = stop_exception
+        self.show_trace_level_num = show_trace_level_num
 
     def __call__(self, func):
         def exc_save_func(*args, **kwargs):
@@ -32,7 +39,9 @@ class ExcSafe:
                 return func(*args, **kwargs)
             except self.catch_exc_type as exc_val:
                 exc_type, _exc_value, exc_traceback = sys.exc_info()
-                filename, fileline, _func, text = traceback.extract_tb(exc_traceback)[self.show_trace_level_num]
+                filename, fileline, _func, text = traceback.extract_tb(exc_traceback)[
+                    self.show_trace_level_num
+                ]
                 self.logger_func(
                     "Skipping rest of {} '{}' which failed in file '{}'[{}] at source line '{}' due to exception: {} {}".format(
                         type(func).__name__,
@@ -41,7 +50,9 @@ class ExcSafe:
                         fileline,
                         text,
                         exc_type.__name__,
-                        exc_val))
+                        exc_val,
+                    )
+                )
 
         return exc_save_func
 
@@ -57,7 +68,9 @@ class ExcSafe:
                 fileline,
                 text,
                 exc_type.__name__,
-                exc_val))
+                exc_val,
+            )
+        )
 
         return self.stop_exception
 
@@ -67,10 +80,14 @@ def source(obj):
     filename = inspect.getsourcefile(obj)
     sourcelines, startline = inspect.getsourcelines(obj)
 
-    return "".join(["{} '{}' defined in {}[{}]\n".format(type(obj).__name__,
-                                                         getattr(obj, "__name__", "??"),
-                                                         filename,
-                                                         startline)] + sourcelines)
+    return "".join(
+        [
+            "{} '{}' defined in {}[{}]\n".format(
+                type(obj).__name__, getattr(obj, "__name__", "??"), filename, startline
+            )
+        ]
+        + sourcelines
+    )
 
 
 @ExcSafe()
@@ -88,7 +105,9 @@ def params(names, multiline=True, format=None):
     param_result = []
     for name, format in zip(name_list, format):
         if name in global_params:
-            param_result.append(("{} = {" + format + "}").format(name, global_params[name]))
+            param_result.append(
+                ("{} = {" + format + "}").format(name, global_params[name])
+            )
         else:
             param_result.append("{} is N/A".format(name))
 
@@ -127,17 +146,23 @@ class LogCall:
 
     def __call__(self, func):
         def log_call_func(*args, **kwargs):
-            func_call_text = "{}({}{})".format(func.__name__,
-                                               ", ".join(repr(arg) for arg in args),
-                                               "" if not kwargs else ", ".join(
-                                                   "{} = {!r}".format(key, val) for key, val in kwargs.items())
+            func_call_text = "{}({}{})".format(
+                func.__name__,
+                ", ".join(repr(arg) for arg in args),
+                ""
+                if not kwargs
+                else ", ".join(
+                    "{} = {!r}".format(key, val) for key, val in kwargs.items()
+                ),
             )
             if self.log_start:
                 self.logger_func("Calling {}".format(func_call_text))
 
             result = func(*args, **kwargs)
 
-            self.logger_func("Return value >> {!r} << from call {}".format(result, func_call_text))
+            self.logger_func(
+                "Return value >> {!r} << from call {}".format(result, func_call_text)
+            )
             return result
 
         return log_call_func
@@ -147,9 +172,13 @@ def std_timer_formatter(total_seconds):
     hours = total_seconds // 3600
     minutes = total_seconds // 60 % 60
     seconds = total_seconds % 60
-    return ("{:02}h".format(hours) if hours else "" +
-                                                 "{:02}m".format(minutes) if hours else "" +
-                                                                                        "{:02.0f}s".format(seconds))
+    return (
+        "{:02}h".format(hours)
+        if hours
+        else "" + "{:02}m".format(minutes)
+        if hours
+        else "" + "{:02.0f}s".format(seconds)
+    )
 
 
 class Timer:
@@ -157,8 +186,14 @@ class Timer:
     ATM only __exit__ keeps track of self.total_durations
     """
 
-    def __init__(self, name=None, logger_func=std_logger.info, formatter=std_timer_formatter, func_arg_num_iter=None,
-                 log_predict=True):
+    def __init__(
+        self,
+        name=None,
+        logger_func=std_logger.info,
+        formatter=std_timer_formatter,
+        func_arg_num_iter=None,
+        log_predict=True,
+    ):
         self.name = name
         self.logger_func = logger_func
         self.formatter = formatter
@@ -181,11 +216,18 @@ class Timer:
         if self.log_predict and self.total_durations:
             avg_job_duration = self.avg_duration() * self.num_iter
             estimated_finish_time = self.start_time + avg_job_duration
-            self.logger_func("Starting job {}with estimated running time {:.1f}s {}and finish time {}".format(
-                "'{}' ".format(self.name) if self.name else "",
-                avg_job_duration,
-                "for {} iterations ".format(self.num_iter) if self.num_iter > 1 else "",
-                datetime.datetime.fromtimestamp(estimated_finish_time).strftime("%H:%M:%S")))
+            self.logger_func(
+                "Starting job {}with estimated running time {:.1f}s {}and finish time {}".format(
+                    "'{}' ".format(self.name) if self.name else "",
+                    avg_job_duration,
+                    "for {} iterations ".format(self.num_iter)
+                    if self.num_iter > 1
+                    else "",
+                    datetime.datetime.fromtimestamp(estimated_finish_time).strftime(
+                        "%H:%M:%S"
+                    ),
+                )
+            )
 
     def duration(self):
         return time.time() - self.start_time
@@ -202,7 +244,11 @@ class Timer:
 
         def timed_func(*args, **kwargs):
             with self:
-                self.num_iter = self.func_arg_num_iter(*args, **kwargs) if self.func_arg_num_iter else 1
+                self.num_iter = (
+                    self.func_arg_num_iter(*args, **kwargs)
+                    if self.func_arg_num_iter
+                    else 1
+                )
                 func(*args, **kwargs)
 
         self.name = "func " + func.__name__
@@ -216,22 +262,36 @@ class Timer:
         self.total_durations.append(duration)
         self.total_iterations.append(self.num_iter)
         output = []
-        output.append("Job {}finished after {}{}".format(
-            "'{}' ".format(self.name) if self.name is not None else "",
-            str(self),
-            " with EXCEPTION" if exc_type is not None else ""))
+        output.append(
+            "Job {}finished after {}{}".format(
+                "'{}' ".format(self.name) if self.name is not None else "",
+                str(self),
+                " with EXCEPTION" if exc_type is not None else "",
+            )
+        )
         if len(self.total_durations) > 1:
-            output.append("{:.1f}s per call ({} calls)".format(sum(self.total_durations) / len(self.total_durations),
-                                                               len(self.total_durations)))
+            output.append(
+                "{:.1f}s per call ({} calls)".format(
+                    sum(self.total_durations) / len(self.total_durations),
+                    len(self.total_durations),
+                )
+            )
         if self.num_iter > 1:
-            output.append("{:.1f}s per all {} iterations".format(duration / self.num_iter, self.num_iter))
+            output.append(
+                "{:.1f}s per all {} iterations".format(
+                    duration / self.num_iter, self.num_iter
+                )
+            )
         if len(self.total_durations) > 1 and any(x > 1 for x in self.total_iterations):
-            output.append("{:.1f}s per iteration overall ({} iterations)".format(
-                self.avg_duration(), sum(self.total_iterations)))
+            output.append(
+                "{:.1f}s per iteration overall ({} iterations)".format(
+                    self.avg_duration(), sum(self.total_iterations)
+                )
+            )
         self.logger_func("; ".join(output))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     @LogCall()
@@ -247,7 +307,6 @@ if __name__ == '__main__':
         a = {}
         a[1]
 
-
     # print(source(A))
     a = 14
     b = 13
@@ -259,11 +318,11 @@ if __name__ == '__main__':
     # raise Exception("ABC")
     # save_file(r"F:\V\VT_Oberursel\RBV\KA\CRM_DM_Mafo\04_CMI\03_Projekte\Python\PyCharm\mystd_logger.py")
 
-    #test(1, 2)
-    #test("b", 4)
-    #with Timer("mytimer", 10):
+    # test(1, 2)
+    # test("b", 4)
+    # with Timer("mytimer", 10):
     #    time.sleep(2)
-    #print(t)
+    # print(t)
 
     @Timer(func_arg_num_iter=lambda *args, **kwargs: args[0])
     @ExcSafe()
@@ -272,5 +331,5 @@ if __name__ == '__main__':
         raise Exception("ABC")
 
     timetest(10, 1)
-    #timetest(20, 2)
-    #timetest(30, 3)
+    # timetest(20, 2)
+    # timetest(30, 3)

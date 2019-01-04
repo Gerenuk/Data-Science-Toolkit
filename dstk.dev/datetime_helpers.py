@@ -7,19 +7,31 @@ import numpy as np
 from cytoolz import concat
 from pandas.tseries.offsets import CDay
 
-HOLIDAYS = (list(concat([(dt.date(year, 1, 1),
-                          dt.date(year, 5, 1),
-                          dt.date(year, 10, 3),
-                          dt.date(year, 12, 24),
-                          dt.date(year, 12, 25),
-                          dt.date(year, 12, 26),
-                          dt.date(year, 12, 31),
-                          ) for year in range(2010, 2020)])) +
-            [dt.date(2014, 4, 18), dt.date(2015, 4, 3)] +  # Karfreitag
-            [dt.date(2014, 4, 21), dt.date(2015, 4, 5)] +  # Ostermontag
-            [dt.date(2014, 5, 29), dt.date(2015, 5, 14)] +  # Christi Himmelfahrt
-            [dt.date(2014, 6, 9), dt.date(2015, 5, 25)]  # Pfingstmontag
-            )
+HOLIDAYS = (
+    list(
+        concat(
+            [
+                (
+                    dt.date(year, 1, 1),
+                    dt.date(year, 5, 1),
+                    dt.date(year, 10, 3),
+                    dt.date(year, 12, 24),
+                    dt.date(year, 12, 25),
+                    dt.date(year, 12, 26),
+                    dt.date(year, 12, 31),
+                )
+                for year in range(2010, 2020)
+            ]
+        )
+    )
+    + [dt.date(2014, 4, 18), dt.date(2015, 4, 3)]
+    + [dt.date(2014, 4, 21), dt.date(2015, 4, 5)]  # Karfreitag
+    + [dt.date(2014, 5, 29), dt.date(2015, 5, 14)]  # Ostermontag
+    + [  # Christi Himmelfahrt
+        dt.date(2014, 6, 9),
+        dt.date(2015, 5, 25),
+    ]  # Pfingstmontag
+)
 
 busday_offset = CDay(holidays=HOLIDAYS)
 
@@ -59,7 +71,14 @@ def busday_diff_month_end(date):
 
 @lru_cache(maxsize=300)
 def busday_in_month(year, month, busday):
-    return (busday_offset.rollforward(dt.datetime(year, month, 1)) + busday * busday_offset).to_pydatetime().date()
+    return (
+        (
+            busday_offset.rollforward(dt.datetime(year, month, 1))
+            + busday * busday_offset
+        )
+        .to_pydatetime()
+        .date()
+    )
 
 
 def last_day_of_month(year, month):
@@ -89,12 +108,20 @@ def date_info(date):
 
 @lru_cache(maxsize=300)
 def date_to_float(date):
-    return date.year * 12 + (date.month - 1) + (date.day - 1) / days_in_month(date.year, date.month)
+    return (
+        date.year * 12
+        + (date.month - 1)
+        + (date.day - 1) / days_in_month(date.year, date.month)
+    )
 
 
 @lru_cache(maxsize=300)
 def busdate_to_float(date):
-    return date.year * 12 + (date.month - 1) + busday_diff_month_start(date) / busdays_in_month(date.year, date.month)
+    return (
+        date.year * 12
+        + (date.month - 1)
+        + busday_diff_month_start(date) / busdays_in_month(date.year, date.month)
+    )
 
 
 def float_to_date(float_date):
@@ -129,7 +156,7 @@ def float_to_busdate(float_date):
     return busday_in_month(year, month, busday)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from dateutil.relativedelta import relativedelta
     import numpy as np
 

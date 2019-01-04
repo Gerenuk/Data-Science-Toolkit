@@ -60,6 +60,7 @@ def date_fix_ym(year, month):
 class ColorMapper:
     def __init__(self, known_map=None, colors=None):
         from brewer2mpl import qualitative
+
         self.known_color_map = dict(known_map) if known_map is not None else {}
 
         self.prev_used_colors = {}
@@ -92,7 +93,11 @@ class ColorMapper:
         if key in self.assigned_colors:
             raise KeyError("Resetting color {} for key {}".format(color, key))
         if color in set(self.assigned_colors.values()) and self.color_pool:
-            raise ValueError("Color pool not empty {} but color clash {}".format(self.color_pool, self.assigned_colors))
+            raise ValueError(
+                "Color pool not empty {} but color clash {}".format(
+                    self.color_pool, self.assigned_colors
+                )
+            )
         self.assigned_colors[key] = color
         if key not in self.prev_used_colors:
             self.prev_used_colors[key] = color
@@ -115,6 +120,7 @@ class DefMap:
         else:
             return key
 
+
 # def date_range(year, month, endyear=None, endmonth=None, day=1):
 #    if year2<year1 or (year1==year2 and month2<month1):
 #        raise ValueError("Date range not ordered: {}.{} -> {}.{}".format(year1, month1, year2, month2))
@@ -130,7 +136,6 @@ class DefMap:
 #            year+=1
 
 
-
 import io
 import csv
 import os
@@ -139,7 +144,7 @@ import os
 class ProgressCsv:
     def __init__(self, filename, **kwargs):
         self.file = open(filename, "rb")
-        text_file = io.TextIOWrapper(self.file, newline='')
+        text_file = io.TextIOWrapper(self.file, newline="")
         self.reader = csv.reader(text_file, **kwargs)
         self.total_size = os.path.getsize(filename)
 
@@ -157,8 +162,11 @@ class ProgressCsv:
 
 def progress_csv(*args, **kwargs):
     from tqdm import tqdm
+
     return tqdm(ProgressCsv(*args, **kwargs))
 
 
 def copy_file(source, dest):
-    subprocess.call(['xcopy', source, dest, "/Y"])   # option for overwrite without asking
+    subprocess.call(
+        ["xcopy", source, dest, "/Y"]
+    )  # option for overwrite without asking

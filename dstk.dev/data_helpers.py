@@ -30,12 +30,19 @@ class FuncCache:
 
             if os.path.exists(fullfilename):
                 logg.info(
-                    "Loading function {} from cache file {} (function call skipped)".format(funcname, fullfilename))
+                    "Loading function {} from cache file {} (function call skipped)".format(
+                        funcname, fullfilename
+                    )
+                )
                 result = pickle.load(open(fullfilename, "rb"))
                 return result
             else:
                 result = func(*args, **kwargs)
-                logg.info("Storing result of function {} to cache file {}".format(funcname, fullfilename))
+                logg.info(
+                    "Storing result of function {} to cache file {}".format(
+                        funcname, fullfilename
+                    )
+                )
                 pickle.dump(result, open(fullfilename, "wb"))
                 return result
 
@@ -52,24 +59,35 @@ def cache_pkl(func):  # not used anymore?
             cache_args = pickle.load(file)
             cache_kwargs = pickle.load(file)
             if args == cache_args and kwargs == cache_kwargs:
-                logg.info("Reading result of function {} from file {} since matching parameters found".format(func_name,
-                                                                                                              file_name))
+                logg.info(
+                    "Reading result of function {} from file {} since matching parameters found".format(
+                        func_name, file_name
+                    )
+                )
                 result = pickle.load(file)
                 file.close()
                 return result
             else:
-                logg.info("Re-executing function {} since parameters have changed".format(func_name))
+                logg.info(
+                    "Re-executing function {} since parameters have changed".format(
+                        func_name
+                    )
+                )
                 result = func(*args, **kwargs)
             file.close()
         else:
-            logg.info("Executing function {} since no cache file found".format(func_name))
+            logg.info(
+                "Executing function {} since no cache file found".format(func_name)
+            )
             result = func(*args, **kwargs)
 
         with open(file_name, "wb") as file:
             pickle.dump(args, file)
             pickle.dump(kwargs, file)
             pickle.dump(result, file)
-            logg.info("Stored result of function {} to file {}".format(func_name, file_name))
+            logg.info(
+                "Stored result of function {} to file {}".format(func_name, file_name)
+            )
         return result
 
     return wrapped
@@ -127,7 +145,9 @@ def dict_val_product(d, exclude_keys=[]):
       { a : 2,  b : 3,  c : 3 }
       { a : 2,  b : 3,  c : 4 } ]
     """
-    product_keys = [k for k, v in d.items() if k not in exclude_keys and isinstance(v, list)]
+    product_keys = [
+        k for k, v in d.items() if k not in exclude_keys and isinstance(v, list)
+    ]
     product_values = [d[k] for k in product_keys]
     non_product_dict = {k: v for k, v in d.items() if k not in product_keys}
 

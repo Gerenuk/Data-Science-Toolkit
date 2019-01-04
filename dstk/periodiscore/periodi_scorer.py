@@ -9,6 +9,7 @@ class PeriodiScorer:
     (this is done automatically from PeriodiPredict)
     That is why a fixed pre-defined score is returned for any point.
     """
+
     __slots__ = ["_bin_score", "name", "period_scores", "periods"]
 
     def __init__(self, periodi_bin):

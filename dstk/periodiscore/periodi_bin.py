@@ -15,6 +15,7 @@ class PeriodiBin:
 
     It offers a `pbin1.merge(pbin2)` operation which can be used in reduce/combine.
     """
+
     __slots__ = ["_score_func", "_period_agg_func", "_period_scores", "name"]
 
     def __init__(self, score_func, name=""):
@@ -28,7 +29,9 @@ class PeriodiBin:
         self.name = name
 
         self._period_agg_func = max  #
-        self._period_scores = defaultdict(float)  # the key is the period of the data point
+        self._period_scores = defaultdict(
+            float
+        )  # the key is the period of the data point
 
     def add(self, data):
         """
@@ -37,7 +40,9 @@ class PeriodiBin:
         `new_total_score=self.period_agg_func(old_score, new_score)`
         """
         new_score, period = self._score_func(data)
-        self._period_scores[period] = self._period_agg_func(self._period_scores[period], new_score)
+        self._period_scores[period] = self._period_agg_func(
+            self._period_scores[period], new_score
+        )
 
     @property
     def score(self):
@@ -52,4 +57,6 @@ class PeriodiBin:
 
     def merge(self, other):
         for period, other_score in other._period_scores.items():
-            self._period_scores[period] = self._period_agg_func(self._period_scores[period], other_score)
+            self._period_scores[period] = self._period_agg_func(
+                self._period_scores[period], other_score
+            )

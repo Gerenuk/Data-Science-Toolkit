@@ -3,13 +3,15 @@ import colorful
 
 def color_term_print():
     colorful.use_true.colors()
-    for color in ["purple",
-                  "tomato",
-                  "violet",
-                  "cornflowerBlue",
-                  "deepSkyBlue",
-                  "limeGreen",
-                  "goldenrod1"]:
+    for color in [
+        "purple",
+        "tomato",
+        "violet",
+        "cornflowerBlue",
+        "deepSkyBlue",
+        "limeGreen",
+        "goldenrod1",
+    ]:
         print(f"{getattr(colorful, color)('*** TEXT TEXT TEXT *** '+color)}")
 
 
@@ -19,7 +21,12 @@ def print_rgb_colors(filename="/etc/X11/rgb.txt"):
         text = text[0].lower() + text[1:]
         return text
 
-    colors = sorted(set(process(line.split("\t\t")[-1][:-1]) for line in open(filename).readlines()[1:]))
+    colors = sorted(
+        set(
+            process(line.split("\t\t")[-1][:-1])
+            for line in open(filename).readlines()[1:]
+        )
+    )
 
     colorful.use_true_colors()
 
