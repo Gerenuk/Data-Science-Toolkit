@@ -11,10 +11,12 @@ def plot_cluster_map(
 ):
     """
     :param dataframe: Features are in columns -> will cluster features (no data instances)
+    :param linkage_methods: single, complete, average, weighted; only with Euclidean metric: centroid, median, ward
 
     Clustering: https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html
     Plotting: https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html
     Distances: https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.pdist.html
+
     """
 
     if dendrogram_kwargs is None:

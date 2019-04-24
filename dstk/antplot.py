@@ -15,6 +15,7 @@ from bokeh.models import Label, Range1d
 from bokeh.plotting import ColumnDataSource, figure
 from bokeh.palettes import all_palettes
 from sklearn.ensemble import RandomForestClassifier
+from operator import itemgetter
 
 __author__ = "Anton Suchaneck"
 __email__ = "a.suchaneck@gmail.com"
@@ -866,6 +867,21 @@ def plot_featimp(clf, feature_names, ax=None, num_max_show=50):
     ax.set_ylim((min(yticks) - 0.5, max(yticks) + 0.5))
 
     return ax
+    
+    
+class MidpointNormalize(mpl.colors.Normalize):
+    """
+    Use with `(..., norm=MidpointNormalize(), cmap="Spectral")`
+    """
+    def __init__(self, midpoint=0, vmin=None, vmax=None, clip=False):
+        self.midpoint = midpoint
+        mpl.colors.Normalize.__init__(self, vmin, vmax, clip)
+
+    def __call__(self, value, clip=None):
+        # I'm ignoring masked values and all kinds of edge cases to make a
+        # simple example...
+        x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+        return np.ma.masked_array(np.interp(value, x, y))  
 
 
 if __name__ == "__main__":

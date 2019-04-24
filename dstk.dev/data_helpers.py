@@ -2,6 +2,8 @@ import logging
 import os
 import pickle
 import itertools as it
+import scipy
+import pandas as pd
 
 logg = logging.getLogger(__name__)
 
@@ -158,4 +160,43 @@ def dict_val_product(d, exclude_keys=[]):
         product_key_dict.update(non_product_dict)
         result.append(product_key_dict)
 
+    return result
+
+    
+def compress_ints(vals, sep="-"):
+    # TODO: show only last digits for run end?
+    groups=[]
+    vals=sorted(vals)
+    group=[vals[0]]
+    
+    for val in vals[1:]:
+        if val==group[-1]+1:
+            group.append(val)
+        else:
+            groups.append(group)
+            group=[val]
+    groups.append(group)
+            
+    result=[]
+    for group in groups:
+        if len(group)<=2:
+            result.extend(map(str, group))
+        else:
+            result.append(f"{group[0]}{sep}{group[-1]}")
+    
+    return result
+    
+    
+def fit_linear_models(dataframe):
+    """
+    Fit linear models to all pairs of columns.
+    Useful for detecting Y=a*X+b relations by looking at the r_value
+    """
+    rows=[]
+    for col_name1, col_name2 in tqdm(list(combinations(dataframe.columns, r=2))):
+        fit_result = scipy.stats.linregress(dataframe[col_name1], dataframe[col_name2])
+        rows.append((col_name1, col_name2) + fit_result)
+        
+    result = pd.DataFrame(rows, columns=["col1", "col2", "slope", "intercept", "r_value", "p_value", "std_err"]).sort_values("r_value", ascending=False)
+    
     return result
