@@ -14,22 +14,22 @@ class FilePath:
         """
         if_exists: ignore=just return the name; error=exception if file exists; rename=give alternative name if file exists
         """
-        filepath=os.path.join(*(self.paths + paths))
-        if on_exists=="ignore":
+        filepath = os.path.join(*(self.paths + paths))
+        if on_exists == "ignore":
             return filepath
 
-        file_exists=os.path.exists(filepath)
-        
-        if on_exists=="error" and file_exists:
+        file_exists = os.path.exists(filepath)
+
+        if on_exists == "error" and file_exists:
             raise ValueError("Filename {} already exists".format(filepath))
 
-        if on_exists=="rename":
+        if on_exists == "rename":
             count = 1
-            filebase, fileext= os.path.splitext(filepath)
+            filebase, fileext = os.path.splitext(filepath)
             while file_exists:
                 filepath = "{}-{}{}".format(filebase, count, fileext)
-                count+=1
-                file_exists=os.path.exists(filepath)
+                count += 1
+                file_exists = os.path.exists(filepath)
             return filepath
 
         raise ValueError("Unknown on_exists parameter {}".format(on_exists))
@@ -37,7 +37,7 @@ class FilePath:
     def timestamp_filename(self, filename, timeformat="%m.%d %Hh%Mm%S"):
         # for format see: http://docs.python.org/3/library/datetime.html#strftime-strptime-behavior
         time_text = datetime.datetime.now().strftime(timeformat)
-        filename=string.Template(filename).safe_substitute(time=time_text)
-        
+        filename = string.Template(filename).safe_substitute(time=time_text)
+
         filepath = self.__call__(filename)
         return filepath

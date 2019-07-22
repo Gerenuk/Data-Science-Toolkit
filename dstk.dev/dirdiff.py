@@ -5,8 +5,9 @@ import sys
 
 dir_left = r"D:\ "[:-1]
 dir_right = r"E:\ "[:-1]
-num_bytes=1000
-output=open(r"D:\fileright.txt", "w", encoding="utf8")
+num_bytes = 1000
+output = open(r"D:\fileright.txt", "w", encoding="utf8")
+
 
 def file_hashes(dir_):
     for filepath in Path(dir_).iterdir():
@@ -21,7 +22,7 @@ def file_hashes(dir_):
                 for t in file_hashes(filepath.as_posix()):
                     yield t
         except Exception as e:
-            pass #print("Skipping {} due to {}".format(filepath, e))
+            pass  # print("Skipping {} due to {}".format(filepath, e))
 
 
 files_left = set()

@@ -21,6 +21,7 @@ class ColorsDepleted(Exception):
 
 def _get_named_colormap(colors):
     import matplotlib as mpl
+
     return mpl.colors.get_cmap(colors).colors
     # try:
     #     import palettable
@@ -59,8 +60,9 @@ class BaseColorMapper:
 
         if fixed_map is not None:
             self.colormap = dict(fixed_map)  # keeps track of all color mappings
-            self.all_free_colors = [c for c in colors if
-                                    c not in fixed_map.values()]  # make all colors not in fixed_map available to choose from
+            self.all_free_colors = [
+                c for c in colors if c not in fixed_map.values()
+            ]  # make all colors not in fixed_map available to choose from
         else:
             self.colormap = {}
             self.all_free_colors = list(colors)
@@ -105,7 +107,7 @@ class HashColorMapper(BaseColorMapper):
         raise ColorsDepleted()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = HashColorMapper([1, 2, 3, 4], {"a": 2})
     for x in "abcdef":
         print(x, c[x])

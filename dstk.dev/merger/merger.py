@@ -31,17 +31,23 @@ class FrequencyTracker:
             self.last_rarest_row = row
 
         val_last = self.varfunc(self.last_row)
-        result = {self.varname + "_freq": self.counter[val] / total_num,
-                  self.varname + "_israrest": int(rarest_val == val),
-                  self.varname + "_freqrarest": rarest_count / total_num,
-                  self.varname + "_islast": int(val == val_last),
-                  self.varname + "_freqlast": self.counter[val_last] / total_num,
-                  }
+        result = {
+            self.varname + "_freq": self.counter[val] / total_num,
+            self.varname + "_israrest": int(rarest_val == val),
+            self.varname + "_freqrarest": rarest_count / total_num,
+            self.varname + "_islast": int(val == val_last),
+            self.varname + "_freqlast": self.counter[val_last] / total_num,
+        }
 
         for extra_var in self.extra_varnames:
-            result.update({self.varname + "_rarest_" + extra_var: self.last_rarest_row[extra_var],
-                           self.varname + "_last_" + extra_var: self.last_row[extra_var],
-                           })
+            result.update(
+                {
+                    self.varname
+                    + "_rarest_"
+                    + extra_var: self.last_rarest_row[extra_var],
+                    self.varname + "_last_" + extra_var: self.last_row[extra_var],
+                }
+            )
 
         self.value = result
 
@@ -64,14 +70,16 @@ class TimestampSameCustomer:
 
 
 def trans_iter():
-    for kdnr, groups in groupby(map(dict, pluck(1, trans_dat.iterrows())), key=itemgetter("kdnr")):
-        aggs = (
-            [FrequencyTracker(varname, varfunc, ["timestamp"], 0) for varname, varfunc in
-             [("land", itemgetter("ref_land")),
-              ("kanal", lambda x: str(
-                  x["UTU5_EINGABE_NAME"])[
-                                  :5])]] +
-            [TimestampSameCustomer()])
+    for kdnr, groups in groupby(
+        map(dict, pluck(1, trans_dat.iterrows())), key=itemgetter("kdnr")
+    ):
+        aggs = [
+            FrequencyTracker(varname, varfunc, ["timestamp"], 0)
+            for varname, varfunc in [
+                ("land", itemgetter("ref_land")),
+                ("kanal", lambda x: str(x["UTU5_EINGABE_NAME"])[:5]),
+            ]
+        ] + [TimestampSameCustomer()]
         for row in groups:
             for agg in aggs:
                 agg.add(row)
@@ -131,7 +139,9 @@ class MergeColumn:
                 self.key_row = next(self.data)
                 self.last_key = self.cur_key
                 self.cur_key = self.key_func(self.key_row)
-                assert self.last_key <= self.cur_key, "Keys not sorted {} <= {}".format(self.last_key, self.cur_key)
+                assert self.last_key <= self.cur_key, "Keys not sorted {} <= {}".format(
+                    self.last_key, self.cur_key
+                )
                 if self.equal_key_stepwise:
                     break
         except StopIteration:
@@ -188,7 +198,9 @@ class MergeColumnLast(MergeColumn):
 
 
 class MergeColumnLastPart(MergeColumn):
-    def __init__(self, data, key_func=None, missing_row=None, equal_key_stepwise=False, len_key=1):
+    def __init__(
+        self, data, key_func=None, missing_row=None, equal_key_stepwise=False, len_key=1
+    ):
         super().__init__(data, key_func, missing_row, equal_key_stepwise)
         self.len_key = len_key
 
@@ -197,25 +209,30 @@ class MergeColumnLastPart(MergeColumn):
         return None
 
     def _cur_row(self, min_key):
-        if self.last_key is not None and self.last_key[:self.len_key] == min_key[:self.len_key]:
+        if (
+            self.last_key is not None
+            and self.last_key[: self.len_key] == min_key[: self.len_key]
+        ):
             return (self.last_row, True)
         else:
             return (self.missing_row, False)
 
 
-def merge(*merge_cols, required=lambda x: True, combiner=lambda row, inc: tuple([row, inc])):
+def merge(
+    *merge_cols, required=lambda x: True, combiner=lambda row, inc: tuple([row, inc])
+):
     keys = [mc.min_key for mc in merge_cols]
     while 1:
         if all(mk is None for mk in keys):
             break
         min_key = min(k for k in keys if k is not None)
 
-        rows=[]
-        includeds=[]
+        rows = []
+        includeds = []
 
         for i, mc in enumerate(merge_cols):
             try:
-                row, included=mc.row(min_key)
+                row, included = mc.row(min_key)
                 rows.append(row)
                 includeds.append(included)
             except Exception as e:
@@ -259,9 +276,15 @@ def missing_row(colnames):
             val = 0
         elif colname == "email_provider":
             val = "nomail"
-        elif colname in ("trans_f_time_since_EX_to_DI_m300", "trans_f_time_since_AK_to_DI_m300"):
+        elif colname in (
+            "trans_f_time_since_EX_to_DI_m300",
+            "trans_f_time_since_AK_to_DI_m300",
+        ):
             val = 1000000
-        elif colname in ("trans_f_amount_EX_to_DI_m300", "trans_f_amount_AK_to_DI_m300"):
+        elif colname in (
+            "trans_f_amount_EX_to_DI_m300",
+            "trans_f_amount_AK_to_DI_m300",
+        ):
             val = 0
         elif colname == "timestamp":
             val = 0
@@ -279,34 +302,55 @@ def makeint(x):
         return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
 
-    #base_dir = "/BIGDATA/home/asuchane/Projects/FRA/data"
+    # base_dir = "/BIGDATA/home/asuchane/Projects/FRA/data"
 
-    trans_filename = os.environ["INPUT0"] # os.path.join(base_dir, "clean_tim_features.tab")
-    web_filename = os.environ["INPUT1"] # os.path.join(base_dir, "Webtrekk_Sessions_merged_processed.tab")
-    internet_filename = os.environ["INPUT2"] # os.path.join(base_dir, "Internet logins processed.tab")
-    mobile_filename = os.environ["INPUT3"] # os.path.join(base_dir, "Mobile logins processed.tab")
-    refbank_filename = os.environ["INPUT4"] # os.path.join(base_dir, "reference_bank_change.tab")
-    cust_email_filename = os.environ["INPUT8"] # os.path.join(base_dir, "kunde_email_provider.tab")
-    trans_internal_filename = os.environ["INPUT5"] # os.path.join(base_dir, "trans_internal_to_DI_features.tab")
-    #eid_count_filename = os.environ["INPUT7"] # os.path.join(base_dir, "EID_counts.tab")
-    grey_black_ref_filename = os.environ["INPUT6"] # os.path.join(base_dir, "grey_black_ref_fixed.tab")
-    timesorted_filename = os.environ["INPUT7"] # os.path.join(base_dir, "timesorted_features.tab")
-    #kunden_email_filename = os.environ["INPUT5"] # os.path.join(base_dir, "kunde_email_provider.tab")
+    trans_filename = os.environ[
+        "INPUT0"
+    ]  # os.path.join(base_dir, "clean_tim_features.tab")
+    web_filename = os.environ[
+        "INPUT1"
+    ]  # os.path.join(base_dir, "Webtrekk_Sessions_merged_processed.tab")
+    internet_filename = os.environ[
+        "INPUT2"
+    ]  # os.path.join(base_dir, "Internet logins processed.tab")
+    mobile_filename = os.environ[
+        "INPUT3"
+    ]  # os.path.join(base_dir, "Mobile logins processed.tab")
+    refbank_filename = os.environ[
+        "INPUT4"
+    ]  # os.path.join(base_dir, "reference_bank_change.tab")
+    cust_email_filename = os.environ[
+        "INPUT8"
+    ]  # os.path.join(base_dir, "kunde_email_provider.tab")
+    trans_internal_filename = os.environ[
+        "INPUT5"
+    ]  # os.path.join(base_dir, "trans_internal_to_DI_features.tab")
+    # eid_count_filename = os.environ["INPUT7"] # os.path.join(base_dir, "EID_counts.tab")
+    grey_black_ref_filename = os.environ[
+        "INPUT6"
+    ]  # os.path.join(base_dir, "grey_black_ref_fixed.tab")
+    timesorted_filename = os.environ[
+        "INPUT7"
+    ]  # os.path.join(base_dir, "timesorted_features.tab")
+    # kunden_email_filename = os.environ["INPUT5"] # os.path.join(base_dir, "kunde_email_provider.tab")
 
-    trans_file = os.environ["OUTPUT0"] # os.path.join(base_dir, "clean_final_features.tab")
+    trans_file = os.environ[
+        "OUTPUT0"
+    ]  # os.path.join(base_dir, "clean_final_features.tab")
 
-    trans_dat = pd.read_csv(trans_filename, delimiter="\t", encoding="cp1252",
-                            low_memory=False)  # , compression="gzip")
+    trans_dat = pd.read_csv(
+        trans_filename, delimiter="\t", encoding="cp1252", low_memory=False
+    )  # , compression="gzip")
     web_dat = pd.read_csv(web_filename, delimiter="\t")
     internet_dat = pd.read_csv(internet_filename)
     mobile_dat = pd.read_csv(mobile_filename)
     refbank_dat = pd.read_csv(refbank_filename, delimiter="\t")
     # cust_email = pd.read_csv(cust_email_filename, delimiter="\t")
     # trans_internal = pd.read_csv(trans_internal_filename, delimiter="\t")
-    #eid_counts = pd.read_csv(eid_count_filename, sep="\t")
+    # eid_counts = pd.read_csv(eid_count_filename, sep="\t")
 
     trans_dat.sort(["kdnr", "timestamp"], inplace=True)
 
@@ -314,80 +358,107 @@ if __name__ == '__main__':
     internet_dat.rename(columns={"timestamp": "timestamp_internet"}, inplace=True)
     mobile_dat.rename(columns={"timestamp": "timestamp_mobile"}, inplace=True)
     web_dat.rename(columns={"timestamp": "timestamp_web"}, inplace=True)
-    #eid_counts.rename(columns={"EID_count": "EID_kdnr_counts"}, inplace=True)
+    # eid_counts.rename(columns={"EID_count": "EID_kdnr_counts"}, inplace=True)
     trans_dat.dropna(subset=["timestamp"], inplace=True)
     web_dat.dropna(subset=["timestamp_web"], inplace=True)
 
     trans_dat["empf_kdnr"] = trans_dat.UTU5_EMPF_ZPFL_KONTO.map(
-        dict(trans_dat.ix[:, ["UTU5_AUFTR_ZEMPF_KONTO", "kdnr"]].itertuples(False)))
+        dict(trans_dat.ix[:, ["UTU5_AUFTR_ZEMPF_KONTO", "kdnr"]].itertuples(False))
+    )
     trans_dat["same_customer"] = trans_dat.empf_kdnr == trans_dat.kdnr
-
-
 
     # grey_list = csv.DictReader(open(grey_black_ref_filename, newline="", encoding="utf8"), delimiter="\t")
     grey_list = pd.read_csv(grey_black_ref_filename, sep="\t")
     grey_list.sort(["kdnr", "EINGABE_DATETIME_1970"], inplace=True)
 
-    timesorted_data = csv.DictReader(open(timesorted_filename, newline="", encoding="utf8"), delimiter="\t")
+    timesorted_data = csv.DictReader(
+        open(timesorted_filename, newline="", encoding="utf8"), delimiter="\t"
+    )
 
-    data = merge(MergeColumn(trans_iter(),  # pluck(1,trans_dat.iterrows()),
-                             itemgetter("kdnr", "timestamp"),
-                             equal_key_stepwise=True,
-                             missing_row=missing_row(trans_dat.columns)),
-                 MergeColumnLastPart(pluck(1, web_dat.iterrows()),
-                                     itemgetter("KDNR", "timestamp_web"),
-                                     missing_row=missing_row(web_dat.columns),
-                                     len_key=1),
-                 MergeColumnLastPart(pluck(1, internet_dat.iterrows()),
-                                     itemgetter("kdnr", "timestamp_internet"),
-                                     missing_row=missing_row(internet_dat.columns),
-                                     len_key=1),
-                 MergeColumnLastPart(pluck(1, mobile_dat.iterrows()),
-                                     itemgetter("kdnr", "timestamp_mobile"),
-                                     missing_row=missing_row(mobile_dat.columns),
-                                     len_key=1),
-                 MergeColumnLastPart(pluck(1, refbank_dat[refbank_dat.KZVH_NUTZUNGSTYP == 12].ix[:,
-                                              ["KZVH_KUNDEN_NR", "timestamp_refbank"]].iterrows()),
-                                     itemgetter("KZVH_KUNDEN_NR", "timestamp_refbank"),
-                                     missing_row=missing_row(["KZVH_KUNDEN_NR", "timestamp_refbank"]),
-                                     len_key=1),
-                 #MergeColumnLastPart(pluck(1, eid_counts.iterrows()),
-                 #                    itemgetter("KDNR", "timestamp"),
-                 #                    missing_row=missing_row(eid_counts.columns),
-                 #                    len_key=1,
-                 #                    ),
-                 # MergeColumnPart(pluck(1, cust_email.iterrows()),
-                 #                lambda x: (x["kdnr_0001"],),
-                 #                missing_row=missing_row(cust_email.columns)
-                 #                ),
-                 # MergeColumn(pluck(1, trans_internal.iterrows()),
-                 #            itemgetter("kdnr_0001", "timestamp"),
-                 #            missing_row=missing_row(trans_internal.columns),
-                 #            ),
-                 MergeColumn(pluck(1, grey_list.iterrows()),
-                             lambda x: (int(x["kdnr"]), makeint(x["EINGABE_DATETIME_1970"])),
-                             missing_row=missing_row(grey_list.columns),
-                             ),
-                 MergeColumn(timesorted_data,
-                             lambda row: (int(row["kdnr"]), int(row["timestamp"])),
-                             missing_row=missing_row(timesorted_data.fieldnames)
-                             ),
-                 required=itemgetter(0),
-                 combiner=tuple_dict_combiner,
-                 )
+    data = merge(
+        MergeColumn(
+            trans_iter(),  # pluck(1,trans_dat.iterrows()),
+            itemgetter("kdnr", "timestamp"),
+            equal_key_stepwise=True,
+            missing_row=missing_row(trans_dat.columns),
+        ),
+        MergeColumnLastPart(
+            pluck(1, web_dat.iterrows()),
+            itemgetter("KDNR", "timestamp_web"),
+            missing_row=missing_row(web_dat.columns),
+            len_key=1,
+        ),
+        MergeColumnLastPart(
+            pluck(1, internet_dat.iterrows()),
+            itemgetter("kdnr", "timestamp_internet"),
+            missing_row=missing_row(internet_dat.columns),
+            len_key=1,
+        ),
+        MergeColumnLastPart(
+            pluck(1, mobile_dat.iterrows()),
+            itemgetter("kdnr", "timestamp_mobile"),
+            missing_row=missing_row(mobile_dat.columns),
+            len_key=1,
+        ),
+        MergeColumnLastPart(
+            pluck(
+                1,
+                refbank_dat[refbank_dat.KZVH_NUTZUNGSTYP == 12]
+                .ix[:, ["KZVH_KUNDEN_NR", "timestamp_refbank"]]
+                .iterrows(),
+            ),
+            itemgetter("KZVH_KUNDEN_NR", "timestamp_refbank"),
+            missing_row=missing_row(["KZVH_KUNDEN_NR", "timestamp_refbank"]),
+            len_key=1,
+        ),
+        # MergeColumnLastPart(pluck(1, eid_counts.iterrows()),
+        #                    itemgetter("KDNR", "timestamp"),
+        #                    missing_row=missing_row(eid_counts.columns),
+        #                    len_key=1,
+        #                    ),
+        # MergeColumnPart(pluck(1, cust_email.iterrows()),
+        #                lambda x: (x["kdnr_0001"],),
+        #                missing_row=missing_row(cust_email.columns)
+        #                ),
+        # MergeColumn(pluck(1, trans_internal.iterrows()),
+        #            itemgetter("kdnr_0001", "timestamp"),
+        #            missing_row=missing_row(trans_internal.columns),
+        #            ),
+        MergeColumn(
+            pluck(1, grey_list.iterrows()),
+            lambda x: (int(x["kdnr"]), makeint(x["EINGABE_DATETIME_1970"])),
+            missing_row=missing_row(grey_list.columns),
+        ),
+        MergeColumn(
+            timesorted_data,
+            lambda row: (int(row["kdnr"]), int(row["timestamp"])),
+            missing_row=missing_row(timesorted_data.fieldnames),
+        ),
+        required=itemgetter(0),
+        combiner=tuple_dict_combiner,
+    )
 
-    #kunde_email_df = pd.read_csv(kunden_email_filename, sep="\t")
-    #kunde_email = defaultdict(lambda: "noemail", zip(kunde_email_df.kdnr_0001, kunde_email_df.email_provider))
+    # kunde_email_df = pd.read_csv(kunden_email_filename, sep="\t")
+    # kunde_email = defaultdict(lambda: "noemail", zip(kunde_email_df.kdnr_0001, kunde_email_df.email_provider))
 
     with open(trans_file, "w", newline="", encoding="utf8") as f:
         writer = None
 
         for row in pluck(0, data):
-            for timevar in ["timestamp_web", "timestamp_internet", "timestamp_mobile", "timestamp_refbank",
-                            "timestamp_samecustomer", "kanal_rarest_timestamp", "land_rarest_timestamp"]:
+            for timevar in [
+                "timestamp_web",
+                "timestamp_internet",
+                "timestamp_mobile",
+                "timestamp_refbank",
+                "timestamp_samecustomer",
+                "kanal_rarest_timestamp",
+                "land_rarest_timestamp",
+            ]:
                 row[timevar + "_timesince"] = row["timestamp"] - row[timevar]
 
-            if row["trans_c_day_of_week"] == 7: # remap so that week order is Monday -> Sunday and rules can split weekend
+            if (
+                row["trans_c_day_of_week"] == 7
+            ):  # remap so that week order is Monday -> Sunday and rules can split weekend
                 row["trans_c_day_of_week"] = 0
 
             for c in list(row.keys()):
@@ -395,9 +466,13 @@ if __name__ == '__main__':
                     row["whitelist_" + c] = row[c] if row["same_customer"] == 0 else 0
 
                 if "l35d" in c and "value" in c:
-                    row["spike_1_" + c] = row["trans_f_transaction_amount"] / row[c] if row[c] > 100 else 0
+                    row["spike_1_" + c] = (
+                        row["trans_f_transaction_amount"] / row[c]
+                        if row[c] > 100
+                        else 0
+                    )
 
-            #row["email_provider"] = kunde_email[row["kdnr"]]
+            # row["email_provider"] = kunde_email[row["kdnr"]]
             row["channel5"] = row["UTU5_EINGABE_NAME"][:5]
 
             if writer is None:

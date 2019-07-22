@@ -17,7 +17,12 @@ class MassMessageFilter(logging.Filter):
         if num_msg < self.max_num_message:
             return True
         elif num_msg == self.max_num_message:
-            record.msg = record.msg + " (omitting further messages since {}x exceeded)".format(self.max_num_message)
+            record.msg = (
+                record.msg
+                + " (omitting further messages since {}x exceeded)".format(
+                    self.max_num_message
+                )
+            )
             return True
         else:
             return False
@@ -30,15 +35,13 @@ class MassMessageFilter(logging.Filter):
             values = self.values(msg)
             counter = Counter(values)
             most_common_elem, most_common_count = counter.most_common(1)[0]
-            return "Summary: '{}' came {} times with {} distinct elements and most commonly {}x {}".format(msg,
-                                                                                                           len(values),
-                                                                                                           len(set(
-                                                                                                               values)),
-                                                                                                           most_common_count,
-                                                                                                           ",".join(
-                                                                                                               repr(s)
-                                                                                                               for s in
-                                                                                                               most_common_elem))
+            return "Summary: '{}' came {} times with {} distinct elements and most commonly {}x {}".format(
+                msg,
+                len(values),
+                len(set(values)),
+                most_common_count,
+                ",".join(repr(s) for s in most_common_elem),
+            )
         else:
             return ""
 
@@ -51,7 +54,7 @@ def error_trapping(msg, exc_info=True):
         logging.error(msg, exc_info=exc_info)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("test")
 

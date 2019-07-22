@@ -35,6 +35,7 @@ def dependency_operator(output_num=None):
     >>> x, y = f(..)        # x, y will be lazy DependencyNodes
     """
     if output_num is None:
+
         def wrapper(func):
             def partial_cached_operator(*args, **kwargs):
                 return MemCache(Operator(func, *args, **kwargs))
@@ -43,6 +44,7 @@ def dependency_operator(output_num=None):
 
         return wrapper
     else:
+
         def wrapper_multi(func):
             def partial_cached_operator_multi(*args, **kwargs):
                 data_cache = MemCache(Operator(func, *args, **kwargs))

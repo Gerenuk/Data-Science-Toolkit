@@ -29,7 +29,7 @@ def relationparse_pair(x, y):
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import pandas as pd
 
     df = pd.DataFrame([[1, 2, 3], [1, 2, 3], [2, 4, 5], [2, 4, 5]], columns=list("abc"))

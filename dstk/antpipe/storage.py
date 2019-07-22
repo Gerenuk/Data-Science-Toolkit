@@ -74,7 +74,11 @@ class ParquetFilename:
         return self.filename
 
     def write(self, data):
-        raise ValueError("ParquetFilename for file '{}' is not intended for writing".format(self.filename))
+        raise ValueError(
+            "ParquetFilename for file '{}' is not intended for writing".format(
+                self.filename
+            )
+        )
 
     @property
     def timestamp(self):
@@ -117,4 +121,3 @@ class MemStorage:
 
     def write(self, data):
         self.data = data
-

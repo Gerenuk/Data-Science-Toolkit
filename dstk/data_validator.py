@@ -22,20 +22,17 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel("DEBUG")
 
-type_caster_map = {"int": int,
-                   "str": str,
-                   "float": float,
-                   }
+type_caster_map = {"int": int, "str": str, "float": float}
 
 
-def regex_checker(val, regex):   # Processors can modify values or throw exception
+def regex_checker(val, regex):  # Processors can modify values or throw exception
     match = re.fullmatch(regex, val)
     if not match:
         raise ParseError("Value {} failed to match regex {}".format(val, regex))
     return val
 
-processor_map = {"regex": regex_checker,
-                 }
+
+processor_map = {"regex": regex_checker}
 
 
 class ParseError(Exception):
@@ -57,13 +54,19 @@ try:
     yaml_config = yaml.load(open(config_filename))
 
     reader_kwargs = yaml_config["reader"]
-    writer_kwargs = yaml_config["writer"]  # Apart from filename not much used for pandas.to_pickle
+    writer_kwargs = yaml_config[
+        "writer"
+    ]  # Apart from filename not much used for pandas.to_pickle
     columns = yaml_config["columns"]
 
     logger.debug("Column specs are {}".format(columns))
 
-    reader_kwargs._update({k: v for k, v in [k_v.split("=") for k_v in args.r.split(",")]})
-    writer_kwargs._update({k: v for k, v in [k_v.split("=") for k_v in args.w.split(",")]})
+    reader_kwargs._update(
+        {k: v for k, v in [k_v.split("=") for k_v in args.r.split(",")]}
+    )
+    writer_kwargs._update(
+        {k: v for k, v in [k_v.split("=") for k_v in args.w.split(",")]}
+    )
 
     logger.debug("Reader arguments are {}".format(reader_kwargs))
     logger.debug("Writer arguments are {}".format(writer_kwargs))
@@ -75,11 +78,12 @@ try:
 
     column_names = [c["name"] for c in columns]
     data_column_names = reader.fieldnames
-    if data_column_names != column_names:   # column order is strict
-        raise ParseError("Column names stated do not match column names in data.\n" +
-                         "Stated: {}\n".format(", ".join(map(str, column_names))) +
-                         "In data: {}".format(", ".join(map(str, data_column_names)))
-                         )
+    if data_column_names != column_names:  # column order is strict
+        raise ParseError(
+            "Column names stated do not match column names in data.\n"
+            + "Stated: {}\n".format(", ".join(map(str, column_names)))
+            + "In data: {}".format(", ".join(map(str, data_column_names)))
+        )
 
     column_processors = {column["name"]: column["processing"] for column in columns}
     column_types = {column["name"]: column["type"] for column in columns}
@@ -90,23 +94,34 @@ try:
     for row_idx, row in enumerate(reader):
         processed_row = {}
         if row.keys() != column_names_set:
-            raise ParseError("Row name do not match" +
-                             "Missing rows: {}".format(", ".join(sorted(column_names_set - row.keys()))) +
-                             "Excess rows: {}".format(",".join(row.keys() - column_names_set))
-                             )
+            raise ParseError(
+                "Row name do not match"
+                + "Missing rows: {}".format(
+                    ", ".join(sorted(column_names_set - row.keys()))
+                )
+                + "Excess rows: {}".format(",".join(row.keys() - column_names_set))
+            )
 
         for col_name, val in row.items():
             try:
                 for processor in column_processors[col_name]:
-                    val = processor_map[processor["name"]](val, **dissoc(processor, "name"))
+                    val = processor_map[processor["name"]](
+                        val, **dissoc(processor, "name")
+                    )
 
                 val = type_caster_map[column_types[col_name]](val)
             except Exception as exc:
-                raise ParseError("Failed at row {} and column {}\n{}".format(row_idx, col_name, str(exc)))
+                raise ParseError(
+                    "Failed at row {} and column {}\n{}".format(
+                        row_idx, col_name, str(exc)
+                    )
+                )
             processed_row[col_name] = val
         processed_data.append(processed_row)
 
-    processed_data = pd.DataFrame(processed_data)  # Would need to confirm types here. But final output probably parquet anyway
+    processed_data = pd.DataFrame(
+        processed_data
+    )  # Would need to confirm types here. But final output probably parquet anyway
 
     output_filename = writer_kwargs["filename"]
     logger.info("Writing file {}".format(output_filename))
@@ -117,4 +132,3 @@ try:
 except Exception as exc:
     logger.error("Data validation failed with:\n{}".format(exc))
     sys.exit(1)
-

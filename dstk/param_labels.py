@@ -38,4 +38,4 @@ class Labels:
         hash_ = hash(value)
         bytes_ = hash_.to_bytes(sys.hash_info.width // 8, "big")
         base64_ = base64.b64encode(bytes_)
-        return base64_[:self.num_chars].decode("utf8")
+        return base64_[: self.num_chars].decode("utf8")

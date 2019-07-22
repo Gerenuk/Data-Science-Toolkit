@@ -2,7 +2,7 @@ from functools import partial
 from collections import deque, defaultdict
 import copy
 
-__author__ = 'asuchane'
+__author__ = "asuchane"
 
 
 class SlidingWindowAggregator:
@@ -75,7 +75,7 @@ class MapVarAggregator:
         self.key__aggregator[self.key_func(row)].remove_row(row)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from pprint import pprint
     from operator import itemgetter as ig
     from operator import attrgetter as ag
@@ -83,14 +83,16 @@ if __name__ == '__main__':
     import string
 
     T = namedtuple("Row", "time id val")
-    data = [T(i, string.ascii_letters[t // 10 - 1], t % 10) for i, t in enumerate([11, 21, 12, 22, 23, 24, 15, 25])]
+    data = [
+        T(i, string.ascii_letters[t // 10 - 1], t % 10)
+        for i, t in enumerate([11, 21, 12, 22, 23, 24, 15, 25])
+    ]
 
-    sliding_window = SlidingWindowAggregator(VarLagFunc(ag("time"), 7),
-                                             VarLagFunc(ag("time"), 28),
-                                             MapVarAggregator(ag("id"),
-                                                              partial(SumAggregator, ag("val"))
-                                                              )
-                                             )
+    sliding_window = SlidingWindowAggregator(
+        VarLagFunc(ag("time"), 7),
+        VarLagFunc(ag("time"), 28),
+        MapVarAggregator(ag("id"), partial(SumAggregator, ag("val"))),
+    )
 
     # pprint(data)
 

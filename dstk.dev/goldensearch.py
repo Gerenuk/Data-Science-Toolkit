@@ -26,11 +26,19 @@ class GoldenSearch:
             self.fc = self.func(self.wrapx(self.c))
 
         if not (self.op(self.fb, self.fa) and self.op(self.fc, self.fd)):
-            chain = (self.op(self.fa, self.fb), self.op(self.fb, self.fc), self.op(self.fc, self.fd))
+            chain = (
+                self.op(self.fa, self.fb),
+                self.op(self.fb, self.fc),
+                self.op(self.fc, self.fd),
+            )
             if chain == (True, True, True):
-                raise ValueError("Extremum outside range. Try lower range < {}".format(self.a))
+                raise ValueError(
+                    "Extremum outside range. Try lower range < {}".format(self.a)
+                )
             elif chain == (False, False, False):
-                raise ValueError("Extremum outside range. Try upper range > {}".format(self.d))
+                raise ValueError(
+                    "Extremum outside range. Try upper range > {}".format(self.d)
+                )
             elif chain == (True, True, False) or chain == (False, True, True):
                 raise ValueError("Opposite extremum found. Cannot determine direction.")
             raise ValueError("Multimodality found.")
@@ -41,7 +49,7 @@ class GoldenSearch:
             return self.wrapx(self.c), self.fc
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     g = GoldenSearch(lambda x: x ** 2, -10, 40)
     for i in range(30):
         print(g.step())

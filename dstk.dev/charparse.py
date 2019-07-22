@@ -33,9 +33,19 @@ def charparse(data):
 
 
 class UnicodeCategoryClass:
-    def __init__(self,
-                 translate={"L": "Alph", "C": "Ctrl", "M": "Mark", "N": "Num", "P": "Punct", "S": "Sym", "Z": "Space"},
-                 subcat=False):
+    def __init__(
+        self,
+        translate={
+            "L": "Alph",
+            "C": "Ctrl",
+            "M": "Mark",
+            "N": "Num",
+            "P": "Punct",
+            "S": "Sym",
+            "Z": "Space",
+        },
+        subcat=False,
+    ):
         self.subcat = subcat
         self.translate = translate
 
@@ -152,17 +162,29 @@ class StringClasses:
         return list(map(itemgetter(1), self.tag_count_D[tuple(tags)]))
 
     def get_class(self, name):
-        return list(itoo.chain.from_iterable(
-            map(itemgetter(1), data) for tags, data in self.tag_count_D.items() if name in tags))
+        return list(
+            itoo.chain.from_iterable(
+                map(itemgetter(1), data)
+                for tags, data in self.tag_count_D.items()
+                if name in tags
+            )
+        )
 
     def report(self):
         print("CHARREPORT", " ".join(str(c) for c in self.classes))
         sorted_line_lengths = sorted(self.line_lengths)
         min_lengths = sorted_line_lengths[:2]
         max_lengths = sorted_line_lengths[-2:]
-        print("{} lines; length {}".format(self.num_lines, count_summary(self.line_lengths)),
-              "; {} empty".format(self.empty) if self.empty > 0 else "", sep="")
-        tag_counts = sorted(((len(data), tag) for tag, data in self.tag_count_D.items()), reverse=True)
+        print(
+            "{} lines; length {}".format(
+                self.num_lines, count_summary(self.line_lengths)
+            ),
+            "; {} empty".format(self.empty) if self.empty > 0 else "",
+            sep="",
+        )
+        tag_counts = sorted(
+            ((len(data), tag) for tag, data in self.tag_count_D.items()), reverse=True
+        )
 
         def value_summary(values, tag):
             if tag == "Num":
@@ -176,7 +198,9 @@ class StringClasses:
             elif tag in ["Alph", "Mark", "Punct", "Sym"]:
                 charcounts = Counter(itoo.chain.from_iterable(values))
                 return "({})".format(
-                    "".join(map(itemgetter(0), charcounts.most_common(3))) + (".." if len(charcounts) > 3 else ""))
+                    "".join(map(itemgetter(0), charcounts.most_common(3)))
+                    + (".." if len(charcounts) > 3 else "")
+                )
             return ""
 
         for length, tag in tag_counts:
@@ -184,25 +208,47 @@ class StringClasses:
             values = list(zip(*map(itemgetter(2), self.tag_count_D[tag])))
             counts_per_class = list(zip(*counts))
 
-            print("{}x {}".format(length, " ".join(
-                "{}{}:{}".format(tag, value_summary(vals, tag), self.count_summary(counts)) for tag, counts, vals in
-                zip(tag, counts_per_class, values))))
-        print("TotalClassLines", " ".join("{}:{}({})".format(tag, count, self.all_class_counts[tag]) for tag, count in
-                                          self.line_class_counts.most_common()))
-        print("TotalCharLines", " ".join("{}:{}({})".format(char, count, self.all_char_counts[char]) for char, count in
-                                         self.line_char_counts.most_common(10)))
+            print(
+                "{}x {}".format(
+                    length,
+                    " ".join(
+                        "{}{}:{}".format(
+                            tag, value_summary(vals, tag), self.count_summary(counts)
+                        )
+                        for tag, counts, vals in zip(tag, counts_per_class, values)
+                    ),
+                )
+            )
+        print(
+            "TotalClassLines",
+            " ".join(
+                "{}:{}({})".format(tag, count, self.all_class_counts[tag])
+                for tag, count in self.line_class_counts.most_common()
+            ),
+        )
+        print(
+            "TotalCharLines",
+            " ".join(
+                "{}:{}({})".format(char, count, self.all_char_counts[char])
+                for char, count in self.line_char_counts.most_common(10)
+            ),
+        )
         print("AllChars '{}'".format("".join(sorted(set(self.all_char_counts)))))
-        print("MostChars '{}'".format("".join(map(itemgetter(0), self.all_char_counts.most_common()))))
+        print(
+            "MostChars '{}'".format(
+                "".join(map(itemgetter(0), self.all_char_counts.most_common()))
+            )
+        )
         if len(self.unknown_char) > 0:
             print("ClasslessChars '{}'".format("".join(sorted(set(self.unknown_char)))))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # s=StringClasses(UnicodeCategoryClass()) #, CharClass("A", list("ab")), CharClass("B", list("12")))
-    #s.parse(["aab1", "z12", "y12", "ab12a", "zzzzz", "aaaaaa", "a1-1", "b23--3", "z", "", "", "b"])
-    #s.report()
-    #print(s.get_class_seq("A B A".split()))
-    #print(s.get_class("?"))
+    # s.parse(["aab1", "z12", "y12", "ab12a", "zzzzz", "aaaaaa", "a1-1", "b23--3", "z", "", "", "b"])
+    # s.report()
+    # print(s.get_class_seq("A B A".split()))
+    # print(s.get_class("?"))
     import csv
 
     filename = r"F:\V\VT_Oberursel\RBV\KA\CRM_DM_Mafo\04_CMI\02_Aufgaben\04_Datenquellen\12_SAP_Reiseaufträge, Kundendaten\RA_Abzug_ab20110101_ALL_lines10000.csv"

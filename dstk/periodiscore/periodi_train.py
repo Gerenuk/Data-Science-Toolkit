@@ -47,7 +47,7 @@ class PeriodiTrain:
                 self._bin_dict[bin_key] = self._bin_generator(bin_key)
             self._bin_dict[bin_key].add(data)
 
-            #if 0:
+            # if 0:
             #    score, period = self._bin_dict[bin_key]._score_func(data)
             #    print(">> {:%d.%m} {} into {} score {:.2f} period {}".format(point[0],
             #                                                                 point[1],

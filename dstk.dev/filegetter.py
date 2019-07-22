@@ -26,5 +26,7 @@ class FileGetter:
                 count += 1
         return filename
 
-    def open_timestamp_filename(self, filename, options="w", timeformat="%m.%d %Hh%Mm%S", **kwargs):
+    def open_timestamp_filename(
+        self, filename, options="w", timeformat="%m.%d %Hh%Mm%S", **kwargs
+    ):
         return open(self.timestamp_filename(filename, timeformat), options, **kwargs)

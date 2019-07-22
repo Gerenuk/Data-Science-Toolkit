@@ -4,13 +4,16 @@ from collections import namedtuple
 
 logger = logging.getLogger(__name__)
 
-TreeShowNode = namedtuple("TreeShowNode", "name children")   # Used to build the (abstract) tree structure for printing
+TreeShowNode = namedtuple(
+    "TreeShowNode", "name children"
+)  # Used to build the (abstract) tree structure for printing
 
 
 class DependencyNode(ABC):
     """
     Dependency nodes are detect as subclasses from this class, rather than duck-typing for attributes.
     """
+
     @abstractmethod
     def _data(self):
         """
@@ -86,26 +89,34 @@ class MultiOutputProxy(DependencyNode):
         self.reference._update()
 
     def _tree_show_node(self):
-        return "?"                          # TODO
+        return "?"  # TODO
 
 
 class Operator(DependencyNode):
     """
     Uncached
     """
+
     def __init__(self, func, *inputs):
         self.func = func
         self.inputs = inputs
 
         self.name = self.func.__name__
-        self.dependency_nodes = [inp for inp in self.inputs if isinstance(inp, DependencyNode)]
+        self.dependency_nodes = [
+            inp for inp in self.inputs if isinstance(inp, DependencyNode)
+        ]
 
-        assert self.dependency_nodes     # TODO: What if empty?
+        assert self.dependency_nodes  # TODO: What if empty?
 
     @property
     def _data(self):
         logger.info("Executing operator {}".format(self.name))
-        return self.func(*[inp._data if isinstance(inp, DependencyNode) else inp for inp in self.inputs])
+        return self.func(
+            *[
+                inp._data if isinstance(inp, DependencyNode) else inp
+                for inp in self.inputs
+            ]
+        )
 
     @property
     def _timestamp(self):
@@ -116,9 +127,10 @@ class Operator(DependencyNode):
             inp._update()
 
     def _tree_show_node(self):
-        return TreeShowNode("FUNC {}".format(self.name),
-                            [inp._tree_show_node() for inp in self.dependency_nodes],
-                            )
+        return TreeShowNode(
+            "FUNC {}".format(self.name),
+            [inp._tree_show_node() for inp in self.dependency_nodes],
+        )
 
 
 class MemCache(DependencyNode):
@@ -128,7 +140,7 @@ class MemCache(DependencyNode):
         self.input = input_
         self.mem_data = self.EMPTY
         self.mem_timestamp = self.EMPTY
-        self.name = "Cache"                      # TODO: better name
+        self.name = "Cache"  # TODO: better name
 
     @property
     def _data(self):
@@ -163,14 +175,11 @@ class MemCache(DependencyNode):
         source_tree_show_node = self.input._tree_show_node()
 
         if self.mem_timestamp is not self.EMPTY:
-            return TreeShowNode("CCH  {}".format(self.name),
-                                [source_tree_show_node],
-                                )
+            return TreeShowNode("CCH  {}".format(self.name), [source_tree_show_node])
         else:
             return TreeShowNode(
-                "CCH{} {}".format(" ", self.name),
-                [source_tree_show_node],
-                )
+                "CCH{} {}".format(" ", self.name), [source_tree_show_node]
+            )
 
 
 class StorageCache(MemCache):
@@ -180,10 +189,10 @@ class StorageCache(MemCache):
         self.name = self.storage.name
         try:
             self.mem_timestamp = storage.timestamp
-        except FileNotFoundError:                             # TODO: too specific for a file system?
-            self.mem_data = self.EMPTY                        # TODO: working?
+        except FileNotFoundError:  # TODO: too specific for a file system?
+            self.mem_data = self.EMPTY  # TODO: working?
 
-    def _update_initial_cache_data(self):                     # TODO: read file cache or recalc?
+    def _update_initial_cache_data(self):  # TODO: read file cache or recalc?
         logger.info("Reading cache {}".format(self.name))
         self.mem_data = self.storage.read()
         self.mem_timestamp = self.storage.timestamp

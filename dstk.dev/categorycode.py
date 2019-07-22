@@ -5,6 +5,7 @@ import random
 # https://github.com/cokiencoke/primitive-root/blob/master/primitive_root.py
 # TODO: calc primitive root; write sklearn transformer
 
+
 def category_code(n, i, primroot1, primroot2):
     """
     n needs to be a prime number and primroot1, primroot2 should be two primitive roots of it
@@ -31,7 +32,7 @@ def category_codes(n, primroot1, primroot2, sample_num=None):
     return result
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from pprint import pprint
 
     pprint(category_codes(11, 2, 6))

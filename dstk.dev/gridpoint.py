@@ -52,7 +52,7 @@ class Point:
 
     @classmethod
     def from_cartesian(cls, x, y):
-        coefs = np.array([x, y]) @ self.base_trans.T
+        coefs = np.array([x, y]) @ cls.base_trans.T
         return cls(*coefs)
 
     def to_cartesian(self):
@@ -85,7 +85,7 @@ class Point:
         else:
             add_coefs = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
 
-        points = [Point(coefs=floor_coefs + np.array(list(a))) for a in add_coefs]
+        points = [Point(*(floor_coefs + np.array(list(a))))) for a in add_coefs]
 
         return [(1 - point.dist_to(self), point) for point in points]
 

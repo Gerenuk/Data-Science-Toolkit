@@ -26,10 +26,14 @@ def _tree_show_str(node, chain_depth=0):
     elif num_children == 1:
         if chain_depth == 0:
             show_parts.append("╦ " + name)
-            show_parts.append(_reformat_tree_show(_tree_show_str(node.children[0], chain_depth + 1)))
+            show_parts.append(
+                _reformat_tree_show(_tree_show_str(node.children[0], chain_depth + 1))
+            )
         else:
             show_parts.append("╠ " + name)
-            show_parts.append(_reformat_tree_show(_tree_show_str(node.children[0], chain_depth + 1)))
+            show_parts.append(
+                _reformat_tree_show(_tree_show_str(node.children[0], chain_depth + 1))
+            )
     else:
         if chain_depth == 0:
             show_parts.append("═ " + name)
@@ -38,8 +42,12 @@ def _tree_show_str(node, chain_depth=0):
 
         for i, child in enumerate(node.children):
             if i < len(node.children) - 1:
-                show_parts.append(_reformat_tree_show(_tree_show_str(child), "  ├─", "  │ "))
+                show_parts.append(
+                    _reformat_tree_show(_tree_show_str(child), "  ├─", "  │ ")
+                )
             else:
-                show_parts.append(_reformat_tree_show(_tree_show_str(child), "  └─", "    "))
+                show_parts.append(
+                    _reformat_tree_show(_tree_show_str(child), "  └─", "    ")
+                )
 
     return "\n".join(show_parts)

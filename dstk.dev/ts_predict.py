@@ -75,8 +75,8 @@ class TimeseriesModel:
     ):
         if length is None:
             length = step
-            
-        length-=1   # since first point also counts
+
+        length -= 1  # since first point also counts
 
         dates = ts[pred_start:pred_end].index
 

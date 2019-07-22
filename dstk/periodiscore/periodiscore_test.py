@@ -20,13 +20,15 @@ data = [11, 35, 51, 72]
 data1 = [11, 35]
 data2 = [51, 72]
 
-periodi_train1 = PeriodiTrain(partial(bin_generator, width=10),
-                              partial(bin_keys_func, width=10))
+periodi_train1 = PeriodiTrain(
+    partial(bin_generator, width=10), partial(bin_keys_func, width=10)
+)
 for data_x in data1:
     periodi_train1.add(data_x)
 
-periodi_train2 = PeriodiTrain(partial(bin_generator, width=10),
-                              partial(bin_keys_func, width=10))
+periodi_train2 = PeriodiTrain(
+    partial(bin_generator, width=10), partial(bin_keys_func, width=10)
+)
 for data_x in data2:
     periodi_train2.add(data_x)
 
