@@ -5,7 +5,7 @@ def plot_cluster_map(
     dataframe,
     linkage_method="complete",
     metric="correlation",
-    figsize=(20, 10),
+    figsize=None,
     dendrogram_kwargs=None,
     save_filename=None,
 ):
@@ -26,6 +26,9 @@ def plot_cluster_map(
 
     linkage_data = hierarchy.linkage(cluster_dataframe, method=linkage_method, metric=metric)
 
+    if figsize is None:
+        figsize = (10, len(cluster_dataframe)*0.2)
+    
     fig, ax = plt.subplots(figsize=figsize)
 
     labels = d.index
@@ -40,6 +43,10 @@ def plot_cluster_map(
     )
 
     ax.tick_params(axis="y", which="major", labelsize=8)
+    
+    ax.grid(True)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.01))
+    ax.xaxis.grid(True, which="minor", linestyle="--")
 
     if save_filename is not None:
         fig.savefig(save_filename, bbox_inches="tight")
