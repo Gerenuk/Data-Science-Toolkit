@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import entropy
 from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.model_selection import BaseCrossValidator
+from sklearn.utils.validation import _num_samples, indexable
 
 class Mesh:
     def __init__(self, x, y, num_points):
@@ -92,3 +94,76 @@ class DigitCategoryEncoder(BaseEstimator, TransformerMixin):
             columns=[f"digicat_{name}_{i}" for i in range(self.shuffle_maps_.shape[1])]
         )
         return result
+
+        
+class KFoldGap:
+    """
+    Like KFold (without shuffle), but also reduces the training indices by a fixed
+    number n_reduce to create a gap between test and training
+    """
+    def __init__(self, n_splits, n_reduce):
+        self.n_splits = n_splits
+        self.n_reduce = n_reduce
+
+    def split(self, X, y=None, groups=None):
+        X, y, groups = indexable(X, y, groups)
+
+        n_samples = _num_samples(X)
+        indices = np.arange(n_samples)
+
+        n_splits = self.n_splits
+        fold_sizes = np.full(n_splits, n_samples // n_splits, dtype=np.int)
+        fold_sizes[: n_samples % n_splits] += 1
+
+        current = 0
+
+        for fold_size in fold_sizes:
+            start, stop = current, current + fold_size
+
+            test_index = indices[start:stop]
+
+            start_pad = start - self.n_reduce
+            stop_pad = stop + self.n_reduce
+
+            if start_pad < 0:
+                start_pad = 0
+
+            if stop_pad > n_samples:
+                stop_pad = n_samples
+
+            block_index = indices[start_pad:stop_pad]
+
+            block_mask = np.zeros(n_samples, dtype=np.bool)
+            block_mask[block_index] = True
+            train_index = indices[np.logical_not(block_mask)]
+
+            yield train_index, test_index
+
+            current = stop
+
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return self.n_splits
+        
+        
+class StratifyGroup(BaseCrossValidator):
+    """
+    Will try to distribute equal `groups` into separate folds
+    """
+    def __init__(self, n_splits):
+        self.n_splits = n_splits
+        
+    def _iter_test_indices(self, X, y=None, groups=None):
+        """
+        groups needs to be sortable
+        """
+        n_samples = _num_samples(X)
+        
+        n_splits = self.n_splits
+        
+        argsort = np.argsort(groups)
+        
+        for i in range(n_splits):
+            yield argsort[i::n_splits]    
+
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return self.n_splits
