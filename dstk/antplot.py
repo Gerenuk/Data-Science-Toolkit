@@ -873,6 +873,27 @@ def plot_featimp(clf, feature_names, ax=None, num_max_show=50):
     return ax
 
 
+def plot_cat_clustermap(df, score_func=None)
+    if score_func is None:
+        score_func = partial(normalized_mutual_info_score, average_method="arithmetic")
+
+    cols = df.columns
+    # factorize columns if not categorical yet
+
+    scores=[]
+    for col1, col2 in tqdm(list(combinations(cols, 2))):
+        score=score_func(df[col1].cat.codes, df[col2].cat.codes)
+        scores.append((col1, col2, score))
+
+    scores=pd.DataFrame(scores, columns=["col1", "col2", "score"])
+
+    scores_sym=pd.concat([scores, scores.rename(columns={"col1":"col2", "col2":"col1"})])
+
+    sns.clustermap(scores_sym.pivot("col1", "col2", "score").fillna(scores_sym["score"].max()));
+
+    return scores_sym
+
+
 class MidpointNormalize(mpl.colors.Normalize):
     """
     Use with `(..., norm=MidpointNormalize(), cmap="Spectral")`
@@ -941,3 +962,56 @@ def plot_val(dd, ddtest, col, target_col, logbin=True, figsize=(15,10), bins="do
 
     plt.title(f"{col}")
     plt.show()
+
+
+def plot_cluster_map(
+    dataframe,
+    linkage_method="complete",
+    metric="correlation",
+    figsize=None,
+    dendrogram_kwargs=None,
+    save_filename=None,
+):
+    """
+    :param dataframe: Features are in columns -> will cluster features (no data instances)
+    :param linkage_methods: single, complete, average, weighted; only with Euclidean metric: centroid, median, ward
+
+    Clustering: https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html
+    Plotting: https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html
+    Distances: https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.pdist.html
+
+    """
+
+    if dendrogram_kwargs is None:
+        dendrogram_kwargs = {}
+
+    cluster_dataframe = dataframe.T
+
+    linkage_data = hierarchy.linkage(cluster_dataframe, method=linkage_method, metric=metric)
+
+    if figsize is None:
+        figsize = (10, len(cluster_dataframe)*0.2)
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    labels = d.index
+
+    hierarchy.dendrogram(
+        linkage_data,
+        orientation="right",
+        labels=labels,
+        ax=ax,
+        distance_sort=True,
+        **dendrogram_kwargs,
+    )
+
+    ax.tick_params(axis="y", which="major", labelsize=8)
+
+    ax.grid(True)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.01))
+    ax.xaxis.grid(True, which="minor", linestyle="--")
+
+    if save_filename is not None:
+        fig.savefig(save_filename, bbox_inches="tight")
+
+    return ax, linkage_data

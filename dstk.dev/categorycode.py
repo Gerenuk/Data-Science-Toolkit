@@ -3,6 +3,8 @@ import random
 
 # http://math.stackexchange.com/questions/124408/finding-a-primitive-root-of-a-prime-number
 # https://github.com/cokiencoke/primitive-root/blob/master/primitive_root.py
+# sympy can show smallest primitive root
+# WolframAlpha can do PrimitiveRoot[.., min] -> apply twice to get primitive roots
 # TODO: calc primitive root; write sklearn transformer
 
 

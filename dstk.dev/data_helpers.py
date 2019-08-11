@@ -163,7 +163,7 @@ def dict_val_product(d, exclude_keys=[]):
     return result
 
     
-def compress_ints(vals, sep="-"):
+def compress_int_seq(vals, sep="-"):
     # TODO: show only last digits for run end?
     groups=[]
     vals=sorted(vals)
@@ -199,4 +199,11 @@ def fit_linear_models(dataframe):
         
     result = pd.DataFrame(rows, columns=["col1", "col2", "slope", "intercept", "r_value", "p_value", "std_err"]).sort_values("r_value", ascending=False)
     
+    return result
+    
+    
+def relation(df, col1, col2):
+    result=df.groupby([col1, col2]).size().groupby(col1).agg(["sum", "size", "max", "min"]).rename(columns={"sum":"n_inst", "size":"nunique_col2", "max":  "n_inst_largest", "min":"n_inst_smallest"})
+    result["n_inst_largest_frac"]=result["n_inst_largest"]/result["n_inst"]
+    result["n_inst_smallest_frac"]=result["n_inst_smallest"]/result["n_inst"]
     return result
