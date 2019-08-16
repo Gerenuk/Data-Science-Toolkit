@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 import numpy as np
+from itertools import groupby
 
 
 @dataclass
@@ -23,3 +24,10 @@ class Bins:
 
     def __getitem__(self, idx):
         return self.bin_min + idx * self.width
+
+
+def natural_sort(val):
+    """
+    sort v2 < v12
+    """
+    return tuple("".join(gr) for _, gr in groupby(val, lambda x:x.isdigit()))

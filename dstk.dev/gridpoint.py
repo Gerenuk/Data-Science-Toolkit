@@ -68,7 +68,7 @@ class Point:
         )  # the largest distance is always the one for the relevant cell which contains the point
         return dist
 
-    def grid_shares(self):  # this version work only for dim=3
+    def grid_shares(self):  # this version works only for dim=3
         """
         Returns [(share_of_point, point), ...]
         Number of points is equal to number of dimensions

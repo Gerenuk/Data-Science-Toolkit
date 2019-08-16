@@ -16,6 +16,7 @@ from bokeh.plotting import ColumnDataSource, figure
 from bokeh.palettes import all_palettes
 from sklearn.ensemble import RandomForestClassifier
 from operator import itemgetter
+import matplotlib as mpl
 
 __author__ = "Anton Suchaneck"
 __email__ = "a.suchaneck@gmail.com"
@@ -834,8 +835,7 @@ def plot_calc_featimp(X, y, feature_names=None, n_jobs=-1, num_max_show=50):
 
 
 def plot_featimp(clf, feature_names, ax=None, num_max_show=50):
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(10, len(feature_names) * 0.3))
+    assert len(clf.feature_importances_)==len(feature_names)
 
     feat_imps = sorted(
         zip(feature_names, clf.feature_importances_), key=itemgetter(1), reverse=True
@@ -844,8 +844,11 @@ def plot_featimp(clf, feature_names, ax=None, num_max_show=50):
     feat_imps = feat_imps[:num_max_show]
     num_show = len(feat_imps)
 
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, num_show * 0.3))
+
     yticks = list(range(num_show))
-    show_feat_names = [feat_name for feat_name, _ in feat_imps]
+    show_feat_names = [feat_name for feat_name, _ in reversed(feat_imps)]
     if len(feature_names) > num_max_show:
         yticks.append(-1)
         show_feat_names.append(f"... {len(feature_names)-num_max_show} more")
@@ -862,17 +865,18 @@ def plot_featimp(clf, feature_names, ax=None, num_max_show=50):
     ax.spines["right"].set_visible(False)
     ax.spines["bottom"].set_visible(False)
     ax.spines["left"].set_visible(False)
-    ax.grid("on", axis="x", linestyle=":")
+    #ax.grid("on", axis="x", linestyle=":")
+    ax.grid(False)
     ax.set_xticklabels([])
     ax.set_ylim((min(yticks) - 0.5, max(yticks) + 0.5))
 
     return ax
-    
-    
+
+
 def plot_cat_clustermap(df, score_func=None)
     if score_func is None:
         score_func = partial(normalized_mutual_info_score, average_method="arithmetic")
-    
+
     cols = df.columns
     # factorize columns if not categorical yet
 
@@ -880,19 +884,21 @@ def plot_cat_clustermap(df, score_func=None)
     for col1, col2 in tqdm(list(combinations(cols, 2))):
         score=score_func(df[col1].cat.codes, df[col2].cat.codes)
         scores.append((col1, col2, score))
-        
+
     scores=pd.DataFrame(scores, columns=["col1", "col2", "score"])
-    
+
     scores_sym=pd.concat([scores, scores.rename(columns={"col1":"col2", "col2":"col1"})])
-    
+
     sns.clustermap(scores_sym.pivot("col1", "col2", "score").fillna(scores_sym["score"].max()));
-    
+
     return scores_sym
-    
-    
+
+
 class MidpointNormalize(mpl.colors.Normalize):
     """
     Use with `(..., norm=MidpointNormalize(), cmap="Spectral")`
+
+    Still needed? Isnt there centering normalizer?
     """
     def __init__(self, midpoint=0, vmin=None, vmax=None, clip=False):
         self.midpoint = midpoint
@@ -902,9 +908,62 @@ class MidpointNormalize(mpl.colors.Normalize):
         # I'm ignoring masked values and all kinds of edge cases to make a
         # simple example...
         x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
-        return np.ma.masked_array(np.interp(value, x, y))  
+        return np.ma.masked_array(np.interp(value, x, y))
 
-        
+
+def plot_cat(dd, ddtest, col, target_col, max_show_cats=30, figsize=(15,10)):
+    target_mean=dd[target_col].mean()
+
+    plt.figure(figsize=figsize)
+
+    cnts=dd[col].value_counts(normalize=True, dropna=False)
+    plot_cnts=cnts.iloc[:max_show_cats]
+    plt.bar(range(len(plot_cnts)), plot_cnts, width=0.9, tick_label=plot_cnts.index)
+    plt.xticks(rotation=45, ha="right")
+    plt.ylabel("Category rate")
+    plt.grid(False)
+
+    test_cnts=ddtest[col].value_counts(normalize=True)
+    plt.step(range(len(plot_cnts)), test_cnts.reindex(plot_cnts.index).fillna(0), c="b", where="mid", label="Test data")
+    plt.legend()
+
+    target_means=dd.groupby(col)[target_col].mean()
+    if dd[col].isnull().any():
+        target_means[np.nan]=dd.loc[dd[col].isnull(), target_col].mean()
+
+    ax_fraud=plt.gca().twinx()
+    ax_fraud.stem(range(len(plot_cnts)), target_means.reindex(plot_cnts.index), linefmt="k:", markerfmt="ko")
+    ax_fraud.set_ylabel("Target mean", color="k")
+    ax_fraud.grid(False)
+    ax_fraud.axhline(target_mean, ls="--", c="k")
+    ax_fraud.set_ylim(bottom=0)
+
+    title=[col]
+    if len(cnts)>len(plot_cnts):
+        title.append(f"({plot_cnts.sum():.0%} of data; {len(plot_cnts)}/{len(cnts)} cats)")
+    plt.title(" ".join(title))
+    plt.show()
+
+
+def plot_val(dd, ddtest, col, target_col, logbin=True, figsize=(15,10), bins="doane"):
+    target_mean=dd[target_col].mean()
+
+    edges=np.histogram_bin_edges(dd[col].dropna().to_list()+ddtest[col].dropna().to_list(), bins=bins)
+    plt.figure(figsize=figsize)
+    plt.hist(dd[col], bins=edges, log=logbin)
+    plt.hist(ddtest[col], bins=edges, log=logbin, histtype="step", color="b")
+
+    target_means=dd.groupby(pd.cut(dd[col], bins=edges))[target_col].mean()
+    ax_fraud=plt.gca().twinx()
+    ax_fraud.stem(target_means.index.map(lambda x:x.mid), target_means, linefmt="k:", markerfmt="ko")
+    ax_fraud.set_ylabel("Target mean", color="k")
+    ax_fraud.grid(False)
+    ax_fraud.axhline(target_mean, ls="--", c="k")
+
+    plt.title(f"{col}")
+    plt.show()
+
+
 def plot_cluster_map(
     dataframe,
     linkage_method="complete",
@@ -932,7 +991,7 @@ def plot_cluster_map(
 
     if figsize is None:
         figsize = (10, len(cluster_dataframe)*0.2)
-    
+
     fig, ax = plt.subplots(figsize=figsize)
 
     labels = d.index
@@ -947,7 +1006,7 @@ def plot_cluster_map(
     )
 
     ax.tick_params(axis="y", which="major", labelsize=8)
-    
+
     ax.grid(True)
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.01))
     ax.xaxis.grid(True, which="minor", linestyle="--")
@@ -956,4 +1015,3 @@ def plot_cluster_map(
         fig.savefig(save_filename, bbox_inches="tight")
 
     return ax, linkage_data
-
