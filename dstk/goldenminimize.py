@@ -9,7 +9,7 @@ class GoldenInconsistent(Exception):
 GoldenState=namedtuple("GoldenState", "a b c ya yb yc")
 
 
-def golden_minimize(xs, ys, min_bound=True, max_bound=True):
+def golden_minimize(xs, ys=None, min_bound=True, max_bound=True):
     """
     Pass 2 or 3 initial values
     Range may extend within bounds if minimum appears at edge
@@ -20,12 +20,18 @@ def golden_minimize(xs, ys, min_bound=True, max_bound=True):
     
     xs = [-10, 5]
     mini = golden_minimize(xs, [func(x) for x in xs])
-    x = next(mini)
+    x, state = next(mini)
     for _ in range(10):
-        x = mini.send(func(x))
+        x, state = mini.send(func(x))
         
     The case a b b a  with b < a is not solved at throws GoldenInconsistent        
     """
+    if ys is None:
+        ys=[]
+        for x in xs:
+            y=yield x, None
+            ys.append(y)
+    
     if len(xs) == 2:
         a, c = xs
         ya, yc = ys
