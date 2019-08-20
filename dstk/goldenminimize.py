@@ -28,7 +28,7 @@ def golden_minimize(xs, ys=None, min_bound=True, max_bound=True):
     The case a b b a  with b < a is not solved at throws GoldenInconsistent        
     """
     phi = (1+sqrt(5))/2
-    pos = 2 - phi
+    pos = 2 - phi                  # ~0.382
     
     if ys is None:
         ys=[]
