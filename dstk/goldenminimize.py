@@ -1,4 +1,5 @@
 from collections import namedtuple
+from math import sqrt
 
 
 class GoldenInconsistent(Exception):
@@ -26,6 +27,9 @@ def golden_minimize(xs, ys=None, min_bound=True, max_bound=True):
         
     The case a b b a  with b < a is not solved at throws GoldenInconsistent        
     """
+    phi = (1+sqrt(5))/2
+    pos = 2 - phi
+    
     if ys is None:
         ys=[]
         for x in xs:
