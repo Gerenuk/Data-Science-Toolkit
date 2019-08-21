@@ -25,19 +25,19 @@ class Mesh:
 def plot_mesh_predict_contour(clf, x, y, ax=None, num_points=100, **contour_params):
     if ax is None:
         ax = plt.gca()
-    
+
     mesh = Mesh(x, y, num_points)
     X = mesh.X
     z = clf.predict(X)
     zz = mesh.mesh_reshape(z)
     ax.contour(mesh.xx, mesh.yy, zz, **contour_params)
-    
-    
+
+
 def cond_entropy(dd, y_cols, x_cols):
     counts=dd.groupby(y_cols+x_cols).size().to_frame("xy").reset_index().merge(dd.groupby(x_cols).size().to_frame("x").reset_index())
     return entropy(counts["xy"], counts["x"])
-    
-    
+
+
 def baserepr(num, base):
     (d, m) = divmod(num, base)
     if d > 0:
@@ -47,15 +47,15 @@ def baserepr(num, base):
 
 def shuffle_maps(N, base, noise=0.1):
     reprs = [baserepr(i, base) for i in range(N)]
-    
+
     len_repr = max(map(len, reprs))
     mappings = np.array([list(islice(chain(reversed(a_repr), repeat(0)), len_repr)) for a_repr in reprs], dtype="float32")
-    
+
     mappings += np.random.normal(scale=noise, size=mappings.shape)
 
     return mappings
-    
-    
+
+
 class DigitCategoryEncoder(BaseEstimator, TransformerMixin):
     """
     Like binary encoding, but with arbitrary base and a noise term.
@@ -82,7 +82,7 @@ class DigitCategoryEncoder(BaseEstimator, TransformerMixin):
         """
         if name is None:
             name = X.name
-            
+
         result = pd.DataFrame(
             [
                 [
@@ -95,7 +95,27 @@ class DigitCategoryEncoder(BaseEstimator, TransformerMixin):
         )
         return result
 
-        
+
+class FutureSplit:
+    def __init__(self, test_size, n_reduce=0):
+        self.test_size = test_size
+        self.n_reduce = n_reduce
+
+    def split(self, X, y=None, groups=None):
+        X, y, groups = indexable(X, y, groups)
+
+        n_samples = _num_samples(X)
+        train_size = round((1 - self.test_size) * n_samples)
+
+        train_index = np.arange(train_size - self.n_reduce)
+        test_index = np.arange(train_size, n_samples)
+
+        yield train_index, test_index
+
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return 1
+
+
 class KFoldGap:
     """
     Like KFold (without shuffle), but also reduces the training indices by a fixed
@@ -143,27 +163,27 @@ class KFoldGap:
 
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
-        
-        
+
+
 class StratifyGroup(BaseCrossValidator):
     """
     Will try to distribute equal `groups` into separate folds
     """
     def __init__(self, n_splits):
         self.n_splits = n_splits
-        
+
     def _iter_test_indices(self, X, y=None, groups=None):
         """
         groups needs to be sortable
         """
         n_samples = _num_samples(X)
-        
+
         n_splits = self.n_splits
-        
+
         argsort = np.argsort(groups)
-        
+
         for i in range(n_splits):
-            yield argsort[i::n_splits]    
+            yield argsort[i::n_splits]
 
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
