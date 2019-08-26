@@ -4,8 +4,62 @@ import matplotlib.pyplot as plt
 from scipy.stats import entropy
 from itertools import islice, chain, repeat
 from sklearn.base import TransformerMixin, BaseEstimator
-from sklearn.model_selection import BaseCrossValidator
+from sklearn.model_selection import BaseCrossValidator, train_test_split
 from sklearn.utils.validation import _num_samples, indexable
+import colorful
+from functools import partial
+
+colorful.use_true_colors()
+
+
+def format_if_number(x, color=None, format="{:g}"):
+    if isinstance(x, (int, float)):
+        text = format.format(x)
+    else:
+        text = x
+
+    if color is not None:
+        text = color(text)
+
+    return text
+
+
+color_score = partial(format_if_number, color=colorful.violet)
+color_number = partial(format_if_number, color=colorful.cornflowerBlue, format="{}")
+color_param = partial(format_if_number, color=colorful.deepSkyBlue)
+
+
+def featimp(clf, df):
+    return pd.Series(clf.feature_importances_, index=df.columns).sort_values(
+        ascending=False
+    )
+
+
+def earlystop(
+    clf,
+    X,
+    y,
+    *,
+    eval_metric=None,
+    early_stopping_rounds=100,
+    test_size=0.1,
+    verbose=False,
+    **fit_params,
+):
+    X_train, X_stop, y_train, y_stop = train_test_split(X, y, test_size=test_size)
+
+    clf.fit(
+        X,
+        y,
+        early_stopping_rounds=early_stopping_rounds,
+        eval_set=[(X_stop, y_stop)],
+        eval_metric=eval_metric,
+        verbose=verbose,
+        **fit_params,
+    )
+
+    if hasattr(clf, "best_iteration_"):
+        print(f"Best iteration: {clf.best_iteration_}")
 
 
 class Mesh:
@@ -132,6 +186,13 @@ class FutureSplit:
     def get_n_splits(self, X=None, y=None, groups=None):
         return 1
 
+    def __repr__(self):
+        return (
+            f"FutureSplit(test_size={self.test_size}"
+            + (f", n_reduce={self.n_reduce}" if self.n_reduce > 0 else "")
+            + ")"
+        )
+
 
 class KFoldGap:
     """
@@ -182,6 +243,9 @@ class KFoldGap:
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
 
+    def __repr__(self):
+        return f"KFoldGap({self.n_splits}, n_reduce={self.n_reduce})"
+
 
 class StratifyGroup(BaseCrossValidator):
     """
@@ -206,3 +270,18 @@ class StratifyGroup(BaseCrossValidator):
 
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
+
+    def __repr__(self):
+        return f"StratifyGroup({self.n_splits})"
+
+
+class TrainOnlyFold:
+    def split(self, X, y=None, groups=None):
+        yield np.arange(X.shape[0]), np.array([])
+
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return 1
+
+    def __repr__(self):
+        return "TrainOnlyFold()"
+
