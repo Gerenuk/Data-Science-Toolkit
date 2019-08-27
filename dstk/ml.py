@@ -206,3 +206,14 @@ class StratifyGroup(BaseCrossValidator):
 
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
+
+    
+class TrainOnlyFold:
+    def split(self, X, y=None, groups=None):
+        yield np.arange(X.shape[0]), np.array([])
+        
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return 1
+    
+    def __repr__(self):
+        return "TrainOnlyFold"
