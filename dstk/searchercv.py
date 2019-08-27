@@ -4,7 +4,7 @@ from sklearn.model_selection import cross_validate
 import numpy as np
 from operator import itemgetter
 import time
-from dstk.ml import color_score, color_param, format_if_number
+from dstk.ml import color_score, color_param_val, color_param_name, format_if_number
 
 
 class SearchStop(Exception):
@@ -262,14 +262,17 @@ class SearcherCV:
         self.num_feat_imps = num_feat_imps
 
     def fit(self, X, y, verbose_search=True, **fit_params):
-        cur_params = {}
         if verbose_search:
             print(
                 f"Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
             )
             print()
 
+        self.best_params_ = {}
+
         for searcher in self.searchers:
+            cur_params = self.best_params_
+
             if verbose_search:
                 print(f">> Starting searcher {searcher}")
 
@@ -301,7 +304,7 @@ class SearcherCV:
                         print(
                             f"Current best params:",
                             ", ".join(
-                                f"{param}={val:g}"
+                                f"{param}={format_if_number(val)}"
                                 for param, val in sorted(self.best_params_.items())
                             )
                             if self.best_params_ is not None
@@ -316,7 +319,10 @@ class SearcherCV:
                     run_time_min = (end_time - start_time) / 60
 
                     new_params_color_str = ", ".join(
-                        f"{param_name} = {color_param(param_val) if hasattr(searcher, 'param_name') and searcher.param_name == param_name else param_val}"
+                        f"{color_param_name(param_name)} = {color_param_val(param_val)}"
+                        if hasattr(searcher, "param_name")
+                        and searcher.param_name == param_name
+                        else f"{param_name} = {format_if_number(param_val)}"
                         for param_name, param_val in sorted(cur_params.items())
                     )
 
@@ -337,7 +343,7 @@ class SearcherCV:
             print(f"Final best score: {color_score(self.best_score_)}")
             print(f"Final best params:")
             for param, val in sorted(self.best_params_.items()):
-                print(f"    {param} = {color_param(val)},")
+                print(f"    {color_param_name(param)} = {color_param_val(val)},")
 
     def _score(self, X, y, params, fit_params):
         estimator = clone(self.estimator)
@@ -385,7 +391,7 @@ class SearcherCV:
                 infos.append(
                     "Top feat: "
                     + " · ".join(
-                        feat for _score, feat in feat_imps[: self.num_feat_imps]
+                        str(feat) for _score, feat in feat_imps[: self.num_feat_imps]
                     )
                 )
 

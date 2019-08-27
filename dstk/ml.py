@@ -26,7 +26,8 @@ def format_if_number(x, color=None, format="{:g}"):
 
 color_score = partial(format_if_number, color=colorful.violet)
 color_number = partial(format_if_number, color=colorful.cornflowerBlue, format="{}")
-color_param = partial(format_if_number, color=colorful.deepSkyBlue)
+color_param_val = partial(format_if_number, color=colorful.deepSkyBlue)
+color_param_name = partial(format_if_number, color=colorful.limeGreen, format="{}")
 
 
 def featimp(clf, df):
@@ -58,8 +59,28 @@ def earlystop(
         **fit_params,
     )
 
-    if hasattr(clf, "best_iteration_"):
-        print(f"Best iteration: {clf.best_iteration_}")
+    infos = []
+    if hasattr(clf, "best_iteration_") and clf.best_iteration_ is not None:
+        infos.append(f"Best iter {clf.best_iteration_}")
+
+    if hasattr(clf, "best_score_") and clf.best_score_:
+        best_score_str = ", ".join(
+            (f"{set_name}(" if len(clf.best_score_) > 1 else "")
+            + ", ".join(
+                f"{score_name}={score:g}" for score_name, score in scores.items()
+            )
+            + (")" if len(clf.best_score_) > 1 else "")
+            for set_name, scores in clf.best_score_.items()
+        )
+        infos.append(f"Stop scores {best_score_str}")
+
+    if hasattr(clf, "feature_importances_"):
+        feat_imps = sorted(zip(clf.feature_importances_, X.columns), reverse=True)
+        infos.append(
+            "Top feat: "
+            + " · ".join(feat for _score, feat in feat_imps[: self.num_feat_imps])
+        )
+    print("\n".join(infos))
 
 
 class Mesh:
