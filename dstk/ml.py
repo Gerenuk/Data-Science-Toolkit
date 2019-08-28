@@ -167,3 +167,92 @@ class StratifyGroup(BaseCrossValidator):
 
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
+
+        
+class FeatureSelector(BaseEstimator, TransformerMixin):
+    """
+    Subselects columns for the Sklearn Pipeline
+    needs Pandas DataFrame
+    """
+
+    def __init__(self, feature_names):
+        self.feature_names = list(feature_names)
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        return X[self.feature_names].values
+    
+    
+class DefaultNA(BaseEstimator, ClassifierMixin):
+    """
+    Classifier wrapper which will handle NaN values in the features and predict a `na_default` value for missing values
+    """
+    def __init__(self, clf, na_default=0):
+        self.clf = clf
+        self.na_default = na_default
+        
+    def fit(self, X, y=None):
+        mask = np.isnan(X).any(axis=1)
+        
+        X_non_na=X[~mask]
+        
+        if y is not None:
+            y_non_na = y[~mask]
+        else:
+            y_non_na = None
+        
+        self.clf.fit(X_non_na, y_non_na)
+        
+        return self
+        
+    def predict(self, X):
+        mask = np.isnan(X).any(axis=1)
+        
+        X_non_na=X[~mask]
+        
+        y_pred = self.clf.predict(X_non_na)
+        
+        y=np.full(X.shape[0], self.na_default)
+        y[~mask] = y_pred
+        
+        return y
+    
+    
+    
+class FilterFirstCol(BaseEstimator, ClassifierMixin):
+    """
+    Classifier wrapper which filters on the first column of X and fit/predicts only on filtered X
+    At the same time the first column is dropped for the wrapped classifier
+    The rows which are filtered out get `default` as their prediction
+    """
+    def __init__(self, clf, min_value, default):
+        self.clf = clf
+        self.min_value = min_value
+        self.default = default
+        
+    def fit(self, X, y=None):
+        select = X[:,0] > self.min_value
+        
+        X_fit = X[select, 1:]
+        
+        if y is not None:
+            y_fit = y[select]
+        else:
+            y_fit = None
+        
+        self.clf.fit(X_fit, y_fit)
+        
+        return self
+        
+    def predict(self, X):
+        select = X[:,0] > self.min_value
+        
+        X_pred=X[select, 1:]
+        y_pred = self.clf.predict(X_pred)
+        
+        y=np.full(X.shape[0], self.default)
+        y[select] = y_pred
+        
+        return y
