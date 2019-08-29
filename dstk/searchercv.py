@@ -5,6 +5,7 @@ import numpy as np
 from operator import itemgetter
 import time
 from dstk.ml import color_score, color_param_val, color_param_name, format_if_number
+import datetime as dt
 
 
 class SearchStop(Exception):
@@ -242,7 +243,7 @@ class ListSearcher:
         return new_params
 
     def state_info(self):
-        return f"ListSearcher(val {self.idx+1}/{len(self.val_list)})"
+        return f"ListSearcher({self.param_name}, val {self.idx+1}/{len(self.val_list)})"
 
     def __repr__(self):
         return f"ListSearcher({self.param_name}, {len(self.val_list)} vals)"
@@ -264,7 +265,7 @@ class SearcherCV:
     def fit(self, X, y, verbose_search=True, **fit_params):
         if verbose_search:
             print(
-                f"Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
+                f"[{dt.datetime.now():%H:%M}] Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
             )
             print()
 
@@ -307,7 +308,7 @@ class SearcherCV:
                                 f"{param}={format_if_number(val)}"
                                 for param, val in sorted(self.best_params_.items())
                             )
-                            if self.best_params_ is not None
+                            if self.best_params_
                             else "-",
                         )
                         print(f"Searcher state: {searcher.state_info()}")
