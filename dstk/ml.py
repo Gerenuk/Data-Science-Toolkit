@@ -63,16 +63,21 @@ def earlystop(
     if hasattr(clf, "best_iteration_") and clf.best_iteration_ is not None:
         infos.append(f"Best iter {clf.best_iteration_}")
 
-    if hasattr(clf, "best_score_") and clf.best_score_:
-        best_score_str = ", ".join(
-            (f"{set_name}(" if len(clf.best_score_) > 1 else "")
-            + ", ".join(
-                f"{score_name}={score:g}" for score_name, score in scores.items()
+        if hasattr(clf, "best_score_") and clf.best_score_:
+            best_score_str = (
+                ", ".join(
+                    (f"{set_name}(" if len(clf.best_score_) > 1 else "")
+                    + ", ".join(
+                        f"{score_name}={score:g}"
+                        for score_name, score in scores.items()
+                    )
+                    + (")" if len(clf.best_score_) > 1 else "")
+                    for set_name, scores in clf.best_score_.items()
+                )
+                if isinstance(clf.best_score_, dict)
+                else str(clf.best_score_)
             )
-            + (")" if len(clf.best_score_) > 1 else "")
-            for set_name, scores in clf.best_score_.items()
-        )
-        infos.append(f"Stop scores {best_score_str}")
+            infos.append(f"Stop scores {best_score_str}")
 
     if hasattr(clf, "feature_importances_"):
         feat_imps = sorted(zip(clf.feature_importances_, X.columns), reverse=True)
