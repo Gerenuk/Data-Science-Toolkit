@@ -139,7 +139,7 @@ class GoldenSearch:
                     self.new_y = yield self.new_x
 
                     if self.new_y > self.yc + self.noise:
-                        raise SearchStop("Inconsistent n > c")
+                        raise SearchStop("Inconsistent y > c")
 
                     if self.new_y < self.yb:
                         self.a, self.b = self.b, self.new_x
@@ -148,7 +148,7 @@ class GoldenSearch:
                         self.c = self.new_x
                         self.yc = self.new_y
                     else:
-                        raise SearchStop("Inconsistent n = c")
+                        raise SearchStop("Inconsistent y = c")
                 else:
                     self.new_x = self._map_value(
                         self.a + (1 - self.pos) * (self.b - self.a)
@@ -157,7 +157,7 @@ class GoldenSearch:
                     self.new_y = yield self.new_x
 
                     if self.new_y > self.ya + self.noise:
-                        raise SearchStop("Inconsistent n > a")
+                        raise SearchStop("Inconsistent y > a")
 
                     if self.new_y < self.yb:
                         self.b, self.c = self.new_x, self.b
@@ -166,7 +166,7 @@ class GoldenSearch:
                         self.a = self.new_x
                         self.ya = self.new_y
                     else:
-                        raise SearchStop("Inconsistent n = b")
+                        raise SearchStop("Inconsistent y = b")
             else:
                 raise SearchStop("Inconsistent a < b > c")
 
@@ -250,7 +250,16 @@ class ListSearcher:
 
 
 class SearcherCV:
-    def __init__(self, estimator, searchers, *, scoring, cv, num_feat_imps=5):
+    def __init__(
+        self,
+        estimator,
+        searchers,
+        *,
+        scoring,
+        cv,
+        num_feat_imps=5,
+        init_best_score=None,
+    ):
         self.estimator = estimator
 
         self.searchers = searchers
@@ -258,7 +267,7 @@ class SearcherCV:
         self.scoring = scoring
         self.cv = cv
         self.best_params_ = None
-        self.best_score_ = None
+        self.best_score_ = init_best_score
 
         self.num_feat_imps = num_feat_imps
 
