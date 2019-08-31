@@ -14,6 +14,8 @@ class SearchStop(Exception):
 
 class GoldenSearch:
     """
+    The decision to go left or right is made without noise
+
     def func(x):
         return x**2
 
