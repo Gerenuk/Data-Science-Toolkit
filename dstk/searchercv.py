@@ -14,6 +14,8 @@ class SearchStop(Exception):
 
 class GoldenSearch:
     """
+    The decision to go left or right is made without noise
+
     def func(x):
         return x**2
 
@@ -139,7 +141,7 @@ class GoldenSearch:
                     self.new_y = yield self.new_x
 
                     if self.new_y > self.yc + self.noise:
-                        raise SearchStop("Inconsistent n > c")
+                        raise SearchStop("Inconsistent y > c")
 
                     if self.new_y < self.yb:
                         self.a, self.b = self.b, self.new_x
@@ -148,7 +150,7 @@ class GoldenSearch:
                         self.c = self.new_x
                         self.yc = self.new_y
                     else:
-                        raise SearchStop("Inconsistent n = c")
+                        raise SearchStop("Inconsistent y = c")
                 else:
                     self.new_x = self._map_value(
                         self.a + (1 - self.pos) * (self.b - self.a)
@@ -157,7 +159,7 @@ class GoldenSearch:
                     self.new_y = yield self.new_x
 
                     if self.new_y > self.ya + self.noise:
-                        raise SearchStop("Inconsistent n > a")
+                        raise SearchStop("Inconsistent y > a")
 
                     if self.new_y < self.yb:
                         self.b, self.c = self.new_x, self.b
@@ -166,7 +168,7 @@ class GoldenSearch:
                         self.a = self.new_x
                         self.ya = self.new_y
                     else:
-                        raise SearchStop("Inconsistent n = b")
+                        raise SearchStop("Inconsistent y = b")
             else:
                 raise SearchStop("Inconsistent a < b > c")
 
@@ -250,7 +252,16 @@ class ListSearcher:
 
 
 class SearcherCV:
-    def __init__(self, estimator, searchers, *, scoring, cv, num_feat_imps=5):
+    def __init__(
+        self,
+        estimator,
+        searchers,
+        *,
+        scoring,
+        cv,
+        num_feat_imps=5,
+        init_best_score=None,
+    ):
         self.estimator = estimator
 
         self.searchers = searchers
@@ -258,7 +269,7 @@ class SearcherCV:
         self.scoring = scoring
         self.cv = cv
         self.best_params_ = None
-        self.best_score_ = None
+        self.best_score_ = init_best_score
 
         self.num_feat_imps = num_feat_imps
 
@@ -374,15 +385,19 @@ class SearcherCV:
                 infos.append(f"best iter {clf.best_iteration_}")
 
             if hasattr(clf, "best_score_") and clf.best_score_:
-                best_score_str = ", ".join(
-                    (f"{set_name}(" if len(clf.best_score_) > 1 else "")
-                    + ", ".join(
-                        f"{score_name}={score:g}"
-                        for score_name, score in scores.items()
+                best_score_str = (
+                    ", ".join(
+                        (f"{set_name}(" if len(clf.best_score_) > 1 else "")
+                        + ", ".join(
+                            f"{score_name}={score:g}"
+                            for score_name, score in scores.items()
+                        )
+                        + (")" if len(clf.best_score_) > 1 else "")
+                        for set_name, scores in clf.best_score_.items()
                     )
-                    + (")" if len(clf.best_score_) > 1 else "")
-                    for set_name, scores in clf.best_score_.items()
-                )
+                    if isinstance(clf.best_score_, dict)
+                    else str(clf.best_score_)
+                )  # usually should always be dict
                 infos.append(f"stop scores {best_score_str}")
 
             if hasattr(clf, "feature_importances_"):
