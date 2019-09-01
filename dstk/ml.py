@@ -46,13 +46,14 @@ def earlystop(
     test_size=0.1,
     verbose=False,
     num_feat_imps=5,
+    shuffle=False,
     **fit_params,
 ):
-    X_train, X_stop, y_train, y_stop = train_test_split(X, y, test_size=test_size)
+    X_train, X_stop, y_train, y_stop = train_test_split(X, y, test_size=test_size, shuffle=shuffle)
 
     clf.fit(
-        X,
-        y,
+        X_train,
+        y_train,
         early_stopping_rounds=early_stopping_rounds,
         eval_set=[(X_stop, y_stop)],
         eval_metric=eval_metric,
