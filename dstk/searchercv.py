@@ -6,6 +6,10 @@ from operator import itemgetter
 import time
 from dstk.ml import color_score, color_param_val, color_param_name, format_if_number
 import datetime as dt
+import pytz
+
+
+my_timezone = pytz.timezone("Europe/Berlin")  # used for time output (e.g. on remote cloud server)
 
 
 class SearchStop(Exception):
@@ -226,6 +230,24 @@ class GoldenSearcher:
         return f"GoldenSearcher({self.param_name})"
 
 
+class DefaultsSearcher:
+    def __init__(self):
+        self.num_run_left = 1
+
+    def next_search_params(self, params, last_score):
+        if self.num_run_left > 0:
+            self.num_run_left -= 1
+            return params
+
+        raise SearchStop("Defaults eval finished")
+
+    def state_info(self):
+        return "Defaults"
+
+    def __repr__(self):
+        return Defaults
+
+
 class ListSearcher:
     def __init__(self, param_name, val_list):
         self.param_name = param_name
@@ -276,7 +298,7 @@ class SearcherCV:
     def fit(self, X, y, verbose_search=True, **fit_params):
         if verbose_search:
             print(
-                f"[{dt.datetime.now():%H:%M}] Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
+                f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
             )
             print()
 
