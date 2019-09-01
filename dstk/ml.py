@@ -45,13 +45,15 @@ def earlystop(
     early_stopping_rounds=100,
     test_size=0.1,
     verbose=False,
+    num_feat_imps=5,
+    shuffle=False,
     **fit_params,
 ):
-    X_train, X_stop, y_train, y_stop = train_test_split(X, y, test_size=test_size)
+    X_train, X_stop, y_train, y_stop = train_test_split(X, y, test_size=test_size, shuffle=shuffle)
 
     clf.fit(
-        X,
-        y,
+        X_train,
+        y_train,
         early_stopping_rounds=early_stopping_rounds,
         eval_set=[(X_stop, y_stop)],
         eval_metric=eval_metric,
@@ -83,7 +85,7 @@ def earlystop(
         feat_imps = sorted(zip(clf.feature_importances_, X.columns), reverse=True)
         infos.append(
             "Top feat: "
-            + " · ".join(feat for _score, feat in feat_imps[: self.num_feat_imps])
+            + " · ".join(feat for _score, feat in feat_imps[:num_feat_imps])
         )
     print("\n".join(infos))
 
