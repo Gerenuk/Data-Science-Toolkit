@@ -9,7 +9,9 @@ import datetime as dt
 import pytz
 
 
-my_timezone = pytz.timezone("Europe/Berlin")  # used for time output (e.g. on remote cloud server)
+my_timezone = pytz.timezone(
+    "Europe/Berlin"
+)  # used for time output (e.g. on remote cloud server)
 
 
 class SearchStop(Exception):
@@ -205,6 +207,7 @@ class GoldenSearcher:
 
         if (
             "map_value" not in golden_kwargs
+            and isinstance(target_precision, int)
             and isinstance(x0, int)
             and isinstance(x1, int)
         ):
@@ -313,7 +316,9 @@ class SearcherCV:
             try:
                 score = None
                 while 1:  # SearchStop expected
-                    cur_params = searcher.next_search_params(cur_params, score)
+                    cur_params = searcher.next_search_params(
+                        cur_params, score
+                    )  # may throw StopSearch exception
 
                     mark = (
                         lambda param_name: "*"
@@ -348,7 +353,9 @@ class SearcherCV:
                         print(f"-> Eval: {new_params_str} .......")
 
                     start_time = time.time()
+
                     score = self._score(X, y, cur_params, fit_params)
+
                     end_time = time.time()
                     run_time_min = (end_time - start_time) / 60
 
@@ -372,6 +379,10 @@ class SearcherCV:
                 print()
                 print(f"Searcher {searcher} stopped with: {exc}")
                 print()
+            except Exception as exc:
+                print(
+                    f"Searcher {searcher} failed at params {cur_params} and fit params {fit_params} with: {exc}"
+                )
 
         if verbose_search:
             print(f"Final best score: {color_score(self.best_score_)}")

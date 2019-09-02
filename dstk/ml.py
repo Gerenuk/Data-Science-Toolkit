@@ -49,7 +49,9 @@ def earlystop(
     shuffle=False,
     **fit_params,
 ):
-    X_train, X_stop, y_train, y_stop = train_test_split(X, y, test_size=test_size, shuffle=shuffle)
+    X_train, X_stop, y_train, y_stop = train_test_split(
+        X, y, test_size=test_size, shuffle=shuffle
+    )
 
     clf.fit(
         X_train,
@@ -275,7 +277,7 @@ class KFoldGap:
         return f"KFoldGap({self.n_splits}, n_reduce={self.n_reduce})"
 
 
-class StratifyGroup(BaseCrossValidator):
+class StratifyGroup:
     """
     Will try to distribute equal `groups` into separate folds
     """
@@ -283,18 +285,23 @@ class StratifyGroup(BaseCrossValidator):
     def __init__(self, n_splits):
         self.n_splits = n_splits
 
-    def _iter_test_indices(self, X, y=None, groups=None):
-        """
-        groups needs to be sortable
-        """
-        n_samples = _num_samples(X)
+    def split(self, X, y=None, groups=None):
+        X, y, groups = indexable(X, y, groups)
 
-        n_splits = self.n_splits
+        n_samples = _num_samples(X)
+        indices = np.arange(n_samples)
 
         argsort = np.argsort(groups)
 
-        for i in range(n_splits):
-            yield argsort[i::n_splits]
+        for i in range(self.n_splits):
+            train_index = indices[argsort[i :: self.n_splits]]
+
+            train_mask = np.zeros(n_samples, dtype=np.bool)
+            train_mask[train_index] = True
+
+            test_index = indices[np.logical_not(train_mask)]
+
+            yield train_index, test_index
 
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
