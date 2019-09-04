@@ -91,6 +91,22 @@ class DiffAgg:
 
     def value(self):
         return self.cur_value - self.last_value
+    
+    
+@numba.jitclass([("cur_value", numba.float64)])
+class LastNotNaAgg:
+    def __init__(self):
+        self.cur_value = np.nan
+
+    def add(self, val):
+        if not np.isnan(val):
+            self.cur_value = val
+
+    def reset(self):
+        self.cur_value = np.nan
+
+    def value(self):
+        return self.cur_value
 
 
 @numba.jitclass(
