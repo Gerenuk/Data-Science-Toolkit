@@ -5,6 +5,13 @@ import numpy as np
 from operator import itemgetter
 import time
 from dstk.ml import color_score, color_param_val, color_param_name, format_if_number
+import datetime as dt
+import pytz
+
+
+my_timezone = pytz.timezone(
+    "Europe/Berlin"
+)  # used for time output (e.g. on remote cloud server)
 
 
 class SearchStop(Exception):
@@ -13,6 +20,8 @@ class SearchStop(Exception):
 
 class GoldenSearch:
     """
+    The decision to go left or right is made without noise
+
     def func(x):
         return x**2
 
@@ -138,7 +147,7 @@ class GoldenSearch:
                     self.new_y = yield self.new_x
 
                     if self.new_y > self.yc + self.noise:
-                        raise SearchStop("Inconsistent n > c")
+                        raise SearchStop("Inconsistent y > c")
 
                     if self.new_y < self.yb:
                         self.a, self.b = self.b, self.new_x
@@ -147,7 +156,7 @@ class GoldenSearch:
                         self.c = self.new_x
                         self.yc = self.new_y
                     else:
-                        raise SearchStop("Inconsistent n = c")
+                        raise SearchStop("Inconsistent y = c")
                 else:
                     self.new_x = self._map_value(
                         self.a + (1 - self.pos) * (self.b - self.a)
@@ -156,7 +165,7 @@ class GoldenSearch:
                     self.new_y = yield self.new_x
 
                     if self.new_y > self.ya + self.noise:
-                        raise SearchStop("Inconsistent n > a")
+                        raise SearchStop("Inconsistent y > a")
 
                     if self.new_y < self.yb:
                         self.b, self.c = self.new_x, self.b
@@ -165,7 +174,7 @@ class GoldenSearch:
                         self.a = self.new_x
                         self.ya = self.new_y
                     else:
-                        raise SearchStop("Inconsistent n = b")
+                        raise SearchStop("Inconsistent y = b")
             else:
                 raise SearchStop("Inconsistent a < b > c")
 
@@ -198,6 +207,7 @@ class GoldenSearcher:
 
         if (
             "map_value" not in golden_kwargs
+            and isinstance(target_precision, int)
             and isinstance(x0, int)
             and isinstance(x1, int)
         ):
@@ -223,6 +233,24 @@ class GoldenSearcher:
         return f"GoldenSearcher({self.param_name})"
 
 
+class DefaultsSearcher:
+    def __init__(self):
+        self.num_run_left = 1
+
+    def next_search_params(self, params, last_score):
+        if self.num_run_left > 0:
+            self.num_run_left -= 1
+            return params
+
+        raise SearchStop("Defaults eval finished")
+
+    def state_info(self):
+        return "Defaults"
+
+    def __repr__(self):
+        return Defaults
+
+
 class ListSearcher:
     def __init__(self, param_name, val_list):
         self.param_name = param_name
@@ -242,14 +270,23 @@ class ListSearcher:
         return new_params
 
     def state_info(self):
-        return f"ListSearcher(val {self.idx+1}/{len(self.val_list)})"
+        return f"ListSearcher({self.param_name}, val {self.idx+1}/{len(self.val_list)})"
 
     def __repr__(self):
         return f"ListSearcher({self.param_name}, {len(self.val_list)} vals)"
 
 
 class SearcherCV:
-    def __init__(self, estimator, searchers, *, scoring, cv, num_feat_imps=5):
+    def __init__(
+        self,
+        estimator,
+        searchers,
+        *,
+        scoring,
+        cv,
+        num_feat_imps=5,
+        init_best_score=None,
+    ):
         self.estimator = estimator
 
         self.searchers = searchers
@@ -257,14 +294,14 @@ class SearcherCV:
         self.scoring = scoring
         self.cv = cv
         self.best_params_ = None
-        self.best_score_ = None
+        self.best_score_ = init_best_score
 
         self.num_feat_imps = num_feat_imps
 
     def fit(self, X, y, verbose_search=True, **fit_params):
         if verbose_search:
             print(
-                f"Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
+                f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
             )
             print()
 
@@ -279,7 +316,9 @@ class SearcherCV:
             try:
                 score = None
                 while 1:  # SearchStop expected
-                    cur_params = searcher.next_search_params(cur_params, score)
+                    cur_params = searcher.next_search_params(
+                        cur_params, score
+                    )  # may throw StopSearch exception
 
                     mark = (
                         lambda param_name: "*"
@@ -307,14 +346,16 @@ class SearcherCV:
                                 f"{param}={format_if_number(val)}"
                                 for param, val in sorted(self.best_params_.items())
                             )
-                            if self.best_params_ is not None
+                            if self.best_params_
                             else "-",
                         )
                         print(f"Searcher state: {searcher.state_info()}")
                         print(f"-> Eval: {new_params_str} .......")
 
                     start_time = time.time()
+
                     score = self._score(X, y, cur_params, fit_params)
+
                     end_time = time.time()
                     run_time_min = (end_time - start_time) / 60
 
@@ -338,6 +379,10 @@ class SearcherCV:
                 print()
                 print(f"Searcher {searcher} stopped with: {exc}")
                 print()
+            except Exception as exc:
+                print(
+                    f"Searcher {searcher} failed at params {cur_params} and fit params {fit_params} with: {exc}"
+                )
 
         if verbose_search:
             print(f"Final best score: {color_score(self.best_score_)}")
@@ -373,15 +418,19 @@ class SearcherCV:
                 infos.append(f"best iter {clf.best_iteration_}")
 
             if hasattr(clf, "best_score_") and clf.best_score_:
-                best_score_str = ", ".join(
-                    (f"{set_name}(" if len(clf.best_score_) > 1 else "")
-                    + ", ".join(
-                        f"{score_name}={score:g}"
-                        for score_name, score in scores.items()
+                best_score_str = (
+                    ", ".join(
+                        (f"{set_name}(" if len(clf.best_score_) > 1 else "")
+                        + ", ".join(
+                            f"{score_name}={score:g}"
+                            for score_name, score in scores.items()
+                        )
+                        + (")" if len(clf.best_score_) > 1 else "")
+                        for set_name, scores in clf.best_score_.items()
                     )
-                    + (")" if len(clf.best_score_) > 1 else "")
-                    for set_name, scores in clf.best_score_.items()
-                )
+                    if isinstance(clf.best_score_, dict)
+                    else str(clf.best_score_)
+                )  # usually should always be dict
                 infos.append(f"stop scores {best_score_str}")
 
             if hasattr(clf, "feature_importances_"):

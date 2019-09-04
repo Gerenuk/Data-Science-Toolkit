@@ -45,13 +45,17 @@ def earlystop(
     early_stopping_rounds=100,
     test_size=0.1,
     verbose=False,
+    num_feat_imps=5,
+    shuffle=False,
     **fit_params,
 ):
-    X_train, X_stop, y_train, y_stop = train_test_split(X, y, test_size=test_size)
+    X_train, X_stop, y_train, y_stop = train_test_split(
+        X, y, test_size=test_size, shuffle=shuffle
+    )
 
     clf.fit(
-        X,
-        y,
+        X_train,
+        y_train,
         early_stopping_rounds=early_stopping_rounds,
         eval_set=[(X_stop, y_stop)],
         eval_metric=eval_metric,
@@ -75,14 +79,14 @@ def earlystop(
                 )
             else:
                 best_score_str = format_if_number(clf.best_score_)    # usually should not happen
-                
+
             infos.append(f"Stop scores {best_score_str}")
 
     if hasattr(clf, "feature_importances_"):
         feat_imps = sorted(zip(clf.feature_importances_, X.columns), reverse=True)
         infos.append(
             "Top feat: "
-            + " · ".join(feat for _score, feat in feat_imps[: self.num_feat_imps])
+            + " · ".join(feat for _score, feat in feat_imps[:num_feat_imps])
         )
     print("\n".join(infos))
 
@@ -272,7 +276,7 @@ class KFoldGap:
         return f"KFoldGap({self.n_splits}, n_reduce={self.n_reduce})"
 
 
-class StratifyGroup(BaseCrossValidator):
+class StratifyGroup:
     """
     Will try to distribute equal `groups` into separate folds
     """
@@ -280,18 +284,23 @@ class StratifyGroup(BaseCrossValidator):
     def __init__(self, n_splits):
         self.n_splits = n_splits
 
-    def _iter_test_indices(self, X, y=None, groups=None):
-        """
-        groups needs to be sortable
-        """
-        n_samples = _num_samples(X)
+    def split(self, X, y=None, groups=None):
+        X, y, groups = indexable(X, y, groups)
 
-        n_splits = self.n_splits
+        n_samples = _num_samples(X)
+        indices = np.arange(n_samples)
 
         argsort = np.argsort(groups)
 
-        for i in range(n_splits):
-            yield argsort[i::n_splits]
+        for i in range(self.n_splits):
+            train_index = indices[argsort[i :: self.n_splits]]
+
+            train_mask = np.zeros(n_samples, dtype=np.bool)
+            train_mask[train_index] = True
+
+            test_index = indices[np.logical_not(train_mask)]
+
+            yield train_index, test_index
 
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
