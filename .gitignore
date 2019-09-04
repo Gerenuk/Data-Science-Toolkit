@@ -3,3 +3,5 @@
 .idea
 .ipynb_checkpoints
 .vscode
+.mypy_cache
+__pycache__

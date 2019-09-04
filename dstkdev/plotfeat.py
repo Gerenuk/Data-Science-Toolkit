@@ -147,3 +147,71 @@ def plotfeat2(dataframe, highlight_times=None, style_cycler=None, max_plot_sampl
                 plotfeat(dataframe[col])
                 plt.suptitle("Other days")
                 plt.show()
+
+                
+def plot_scatter_matrix2(
+    dataframe,
+    title=None,
+    preferred_plot_height=5,
+    two_variable_plot_height=10,
+    min_plot_height=3,
+    max_height=20,
+    subplot_spacing=0.02,
+    hist_kwargs=None,
+    scatter_kwargs=None,
+    all_kwargs=None,
+    color=None,
+):
+
+    if hist_kwargs is None:
+        hist_kwargs = {}
+    else:
+        hist_kwargs = hist_kwargs.copy()  # needed since default will modify the dict
+
+    if scatter_kwargs is None:
+        scatter_kwargs = {"scatter_kws":{}, "fit_reg": False}
+
+    if all_kwargs is None:
+        all_kwargs = {}
+        
+    if color is not None:
+        scatter_kwargs["scatter_kws"].update({"c": dataframe[color], "color": None})
+        #scatter_kwargs.update({"c": dataframe[color], "color": None})
+        dataframe=dataframe.drop(columns=[color])
+        
+    num_cols = len(dataframe.columns)
+        
+    # some defaults for hist_kwargs
+    for key, val in {"bins": "doane", "kde": False}.items():
+        if key not in hist_kwargs:
+            hist_kwargs[key]=val
+
+    if num_cols == 2:
+        sns_grid = sns.JointGrid(
+            *dataframe.columns, data=dataframe, height=two_variable_plot_height
+        )
+        sns_grid.plot_joint(sns.regplot, **{**all_kwargs, **scatter_kwargs})
+        sns_grid.plot_marginals(
+            sns.distplot, **{**all_kwargs, **hist_kwargs}
+        )
+
+        ax = sns_grid.ax_joint
+        tilt_labels(ax.xaxis, ax.yaxis)
+    else:
+        height = max(min(preferred_plot_height, max_height / num_cols), min_plot_height)
+
+        sns_grid = sns.PairGrid(dataframe, height=height)
+        sns_grid.map_offdiag(sns.regplot, **{**all_kwargs, **scatter_kwargs})
+        sns_grid.map_diag(
+            sns.distplot, **{**all_kwargs, **hist_kwargs}
+        )
+
+        plt.subplots_adjust(hspace=subplot_spacing, wspace=subplot_spacing)
+
+        for ax in sns_grid.axes.ravel():
+            tilt_labels(ax.xaxis, ax.yaxis)
+
+    if title is not None:
+        plt.gcf().suptitle(title)
+
+    return sns_grid
