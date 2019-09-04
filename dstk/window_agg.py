@@ -223,8 +223,7 @@ def groupby_window_agg(
 
 @numba.jit(nogil=True, nopython=True)
 def groupby_window_count(group, time_vals, timediff_start, timediff_end=0):
-    N = vals.size
-
+    N = group.size
     result = np.zeros(N, dtype=np.float64)  # result currently only float64 array
 
     start_idx = 0
