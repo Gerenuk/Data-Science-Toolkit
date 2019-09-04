@@ -93,6 +93,41 @@ class DiffAgg:
         return self.cur_value - self.last_value
 
 
+@numba.jitclass(
+    [
+        ("values", numba.float64[:]),
+        ("insert_index", numba.int16),
+        ("n", numba.int16),
+        ("missing", numba.float64),
+    ]
+)
+class DiffAggN:
+    def __init__(self, n, missing=np.nan):
+        self.values = np.full(n, missing)
+        self.insert_index = 0
+        self.n = n
+        self.missing = missing
+
+    def add(self, val):
+        self.values[self.insert_index] = val
+        self.insert_index -= 1
+        if self.insert_index < 0:
+            self.insert_index = self.n - 1
+
+    def reset(self):
+        self.values = np.full(self.n, self.missing)
+        self.insert_index = self.n - 1
+
+    def value(self):
+        cur_index = self.insert_index + 1
+        if cur_index >= self.n:
+            cur_index = 0
+
+        past_index = self.insert_index
+
+        return self.values[cur_index] - self.values[past_index]
+
+
 @numba.jit(nogil=True, nopython=True)
 def groupby_window_agg(
     group, time_vals, vals, aggregator, timediff_start, timediff_end=0
@@ -251,6 +286,34 @@ def groupby_expanding_agg(group, vals, aggregator):
     return result
 
 
+@numba.jit(nogil=True, nopython=True)
+def groupby_expanding_count(group):
+    N = group.size
+
+    result = np.zeros(N, dtype=np.float64)  # result currently only float64 array
+
+    cur_group = group[0]
+
+    count = 0
+
+    for cur_idx in range(len(group)):
+        # Track group variable
+        new_group = group[cur_idx]
+
+        if new_group != cur_group:
+            count = 0
+            cur_group = new_group
+
+        count += 1
+
+        # print(vals[cur_idx], "->", aggregator.last_value, aggregator.cur_value)
+
+        # Store current aggregation result
+        result[cur_idx] = count
+
+    return result
+
+
 def _group_col(groups):
     if isinstance(groups, pd.DataFrame):
         groups = groups.astype(str).pipe(
@@ -282,6 +345,24 @@ def pd_groupby_expanding_agg(groups, time, val, agg):
     agg_vals = groupby_expanding_agg(
         df_sub["group"].values, df_sub["x"].astype("float64").values, agg
     )
+
+    return pd.Series(agg_vals, index=df_sub.index)
+
+
+def pd_groupby_expanding_count(groups, time):
+    """
+    :param group: DataFrame
+    :param time: time values (numbers)
+    """
+    groups = _group_col(groups)
+
+    df_sub = pd.DataFrame({"group": groups, "time": time}).sort_values(
+        ["group", "time"]
+    )
+
+    assert df_sub.index.is_unique
+
+    agg_vals = groupby_expanding_count(df_sub["group"].values)
 
     return pd.Series(agg_vals, index=df_sub.index)
 
