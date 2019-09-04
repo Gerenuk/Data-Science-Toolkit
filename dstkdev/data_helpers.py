@@ -162,48 +162,65 @@ def dict_val_product(d, exclude_keys=[]):
 
     return result
 
-    
+
 def compress_int_seq(vals, sep="-"):
     # TODO: show only last digits for run end?
-    groups=[]
-    vals=sorted(vals)
-    group=[vals[0]]
-    
+    groups = []
+    vals = sorted(vals)
+    group = [vals[0]]
+
     for val in vals[1:]:
-        if val==group[-1]+1:
+        if val == group[-1] + 1:
             group.append(val)
         else:
             groups.append(group)
-            group=[val]
+            group = [val]
     groups.append(group)
-            
-    result=[]
+
+    result = []
     for group in groups:
-        if len(group)<=2:
+        if len(group) <= 2:
             result.extend(map(str, group))
         else:
             result.append(f"{group[0]}{sep}{group[-1]}")
-    
+
     return result
-    
-    
+
+
 def fit_linear_models(dataframe):
     """
     Fit linear models to all pairs of columns.
     Useful for detecting Y=a*X+b relations by looking at the r_value
     """
-    rows=[]
+    rows = []
     for col_name1, col_name2 in tqdm(list(combinations(dataframe.columns, r=2))):
         fit_result = scipy.stats.linregress(dataframe[col_name1], dataframe[col_name2])
         rows.append((col_name1, col_name2) + fit_result)
-        
-    result = pd.DataFrame(rows, columns=["col1", "col2", "slope", "intercept", "r_value", "p_value", "std_err"]).sort_values("r_value", ascending=False)
-    
+
+    result = pd.DataFrame(
+        rows,
+        columns=["col1", "col2", "slope", "intercept", "r_value", "p_value", "std_err"],
+    ).sort_values("r_value", ascending=False)
+
     return result
-    
-    
+
+
 def relation(df, col1, col2):
-    result=df.groupby([col1, col2]).size().groupby(col1).agg(["sum", "size", "max", "min"]).rename(columns={"sum":"n_inst", "size":"nunique_col2", "max":  "n_inst_largest", "min":"n_inst_smallest"})
-    result["n_inst_largest_frac"]=result["n_inst_largest"]/result["n_inst"]
-    result["n_inst_smallest_frac"]=result["n_inst_smallest"]/result["n_inst"]
+    result = (
+        df.groupby([col1, col2])
+        .size()
+        .groupby(col1)
+        .agg(["sum", "size", "max", "min"])
+        .rename(
+            columns={
+                "sum": "n_inst",
+                "size": "nunique_col2",
+                "max": "n_inst_largest",
+                "min": "n_inst_smallest",
+            }
+        )
+    )
+    result["n_inst_largest_frac"] = result["n_inst_largest"] / result["n_inst"]
+    result["n_inst_smallest_frac"] = result["n_inst_smallest"] / result["n_inst"]
     return result
+

@@ -873,7 +873,7 @@ def plot_featimp(clf, feature_names, ax=None, num_max_show=50):
     return ax
 
 
-def plot_cat_clustermap(df, score_func=None)
+def plot_cat_clustermap(df, score_func=None):
     if score_func is None:
         score_func = partial(normalized_mutual_info_score, average_method="arithmetic")
 
