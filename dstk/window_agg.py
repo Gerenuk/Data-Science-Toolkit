@@ -128,6 +128,22 @@ class DiffAggN:
         return self.values[cur_index] - self.values[past_index]
 
 
+@numba.jitclass([("cur_value", numba.float64)])
+class MaxExpandAgg:
+    def __init__(self):
+        self.cur_value = np.nan
+
+    def add(self, val):
+        if np.isnan(self.cur_value) or (not np.isnan(val) and val > self.cur_value):
+            self.cur_value = val
+
+    def reset(self):
+        self.cur_value = np.nan
+
+    def value(self):
+        return self.cur_value
+
+
 @numba.jit(nogil=True, nopython=True)
 def groupby_window_agg(
     group, time_vals, vals, aggregator, timediff_start, timediff_end=0
@@ -242,7 +258,9 @@ def groupby_window_count(group, time_vals, timediff_start, timediff_end=0):
             end_idx = cur_idx
 
         # Adjust window start
-        if timediff_start != 0:
+        if np.isnan(timediff_start):
+            pass  # just leave start_idx to beginning of group
+        elif timediff_start != 0:
             window_start_time = cur_time + timediff_start
 
             while start_idx < N - 1:
