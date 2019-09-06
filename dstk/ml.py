@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import entropy
 from itertools import islice, chain, repeat
-from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.base import TransformerMixin, BaseEstimator, ClassifierMixin
 from sklearn.model_selection import BaseCrossValidator, train_test_split
 from sklearn.utils.validation import _num_samples, indexable
 import colorful

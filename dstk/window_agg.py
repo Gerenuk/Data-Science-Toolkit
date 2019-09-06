@@ -91,6 +91,22 @@ class DiffAgg:
 
     def value(self):
         return self.cur_value - self.last_value
+    
+    
+@numba.jitclass([("cur_value", numba.float64)])
+class LastNotNaAgg:
+    def __init__(self):
+        self.cur_value = np.nan
+
+    def add(self, val):
+        if not np.isnan(val):
+            self.cur_value = val
+
+    def reset(self):
+        self.cur_value = np.nan
+
+    def value(self):
+        return self.cur_value
 
 
 @numba.jitclass(
@@ -223,8 +239,7 @@ def groupby_window_agg(
 
 @numba.jit(nogil=True, nopython=True)
 def groupby_window_count(group, time_vals, timediff_start, timediff_end=0):
-    N = vals.size
-
+    N = group.size
     result = np.zeros(N, dtype=np.float64)  # result currently only float64 array
 
     start_idx = 0
