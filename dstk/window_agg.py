@@ -75,16 +75,17 @@ class ZScoreAgg:
 
     def store(self, idx):
         if self.n == 0:
-            return 0
-
-        mean = self.sum / self.n
-        std = sqrt(self.sum_sq / self.n - mean ** 2)
-        if std == 0:
-            return 0
-
-        val = self.values[idx]
-
-        self.result[idx] = (val - mean) / std
+            self.result[idx] = np.nan
+        elif self.n == 1:
+            self.result[idx] = self.sum
+        else:
+            mean = self.sum / self.n
+            std = sqrt(self.sum_sq / self.n - mean ** 2)
+            if std == 0:
+                self.result[idx] = 0  # should this be zero?
+            else:
+                val = self.values[idx]
+                self.result[idx] = (val - mean) / std
 
 
 @numba.jitclass(
@@ -117,8 +118,11 @@ class MeanAgg:
         self.n = 0
 
     def store(self, idx):
-        mean = self.sum / self.n
-        self.result[idx] = mean
+        if self.n == 0:
+            self.result[idx] = np.nan
+        else:
+            mean = self.sum / self.n
+            self.result[idx] = mean
 
 
 @numba.jitclass([("value", numba.float64), ("result", numba.float64[:])])
@@ -305,9 +309,12 @@ class FracAgg:
         self.num = 0
 
     def store(self, idx):
-        val = self.values[idx]
+        if self.num == 0:
+            self.result[idx] = np.nan
+        else:
+            val = self.values[idx]
 
-        self.result[idx] = self.cnts[val] / self.num
+            self.result[idx] = self.cnts[val] / self.num
 
 
 @numba.jitclass(
@@ -440,15 +447,19 @@ class MaxExpandAgg:
 
 @numba.jit(nogil=True, nopython=True)
 def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_end=0):
+    """
+    start_idx and end_idx point at candidates for addition or removal
+    aggregator will be controlled with .add, .remove, .store and is supposed to store the result
+    needs to be sorted by [group, time_vals]
+    """
     start_idx = 0
     end_idx = 0
 
     N = len(group)
 
     cur_group = group[0]
-    aggregator.add(0)
 
-    for cur_idx in range(len(group)):
+    for cur_idx in range(N):
         # Track group variable
         new_group = group[cur_idx]
 
@@ -459,94 +470,64 @@ def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_en
             end_idx = cur_idx
 
             cur_group = new_group
-            aggregator.add(cur_idx)
 
         cur_time = time_vals[cur_idx]
 
         # Adjust window end
-        if timediff_end == 0 and end_idx < N - 1 and group[end_idx + 1] == cur_group:
-            if end_idx < cur_idx:  # otherwise at start of a group and already added
-                aggregator.add(cur_idx)
+        window_end_time = cur_time + timediff_end
 
-            end_idx = cur_idx
-        else:
-            window_end_time = cur_time + timediff_end
-
-            while end_idx < N - 1 and group[end_idx + 1] == cur_group:
-                if time_vals[end_idx + 1] > window_end_time:
-                    break
-
-                end_idx += 1
-                aggregator.add(end_idx)
+        while (
+            end_idx < N
+            and group[end_idx] == cur_group
+            and time_vals[end_idx] <= window_end_time
+        ):
+            aggregator.add(end_idx)
+            end_idx += 1
 
         # Adjust window start
-        if np.isnan(timediff_start):
-            pass  # just leave start_idx to beginning of group
+        window_start_time = cur_time + timediff_start
 
-        elif (
-            timediff_start == 0
-            and start_idx < N - 1
-            and group[start_idx + 1] == cur_group
+        while (
+            start_idx < N
+            and group[start_idx] == cur_group
+            and time_vals[start_idx] < window_start_time
         ):
-            if start_idx < cur_idx:
-                aggregator.remove(start_idx)
-
-        else:
-            window_start_time = cur_time + timediff_start
-
-            while start_idx < N - 1:
-                if time_vals[start_idx] >= window_start_time:
-                    break
-
-                aggregator.remove(start_idx)
-                start_idx += 1
-
-            start_idx = cur_idx
+            aggregator.remove(start_idx)
+            start_idx += 1
 
         aggregator.store(cur_idx)
 
 
 @numba.jit(nogil=True, nopython=True)
 def groupby_expanding_agg(group, aggregator):
-    start_idx = 0
-    end_idx = 0
-
+    """
+    start_idx and end_idx point at candidates for addition or removal
+    aggregator will be controlled with .add, .remove, .store and is supposed to store the result
+    needs to be sorted by [group]
+    """
     N = len(group)
 
     cur_group = group[0]
-    aggregator.add(0)
 
-    for cur_idx in range(len(group)):
+    for cur_idx in range(N):
         # Track group variable
         new_group = group[cur_idx]
 
         if new_group != cur_group:
             aggregator.reset()
 
-            start_idx = cur_idx
-            end_idx = cur_idx
-
             cur_group = new_group
-            aggregator.add(cur_idx)
 
-        if end_idx < N - 1 and group[end_idx + 1] == cur_group:
-            if end_idx < cur_idx:  # otherwise at start of a group and already added
-                aggregator.add(cur_idx)
-
-            end_idx = cur_idx
+        aggregator.add(cur_idx)
 
         aggregator.store(cur_idx)
 
 
 def cat_factorize(cols):
-    if isinstance(cols, list):
-        cols = pd.Series(cols)
-    elif isinstance(cols, pd.DataFrame):
-        cols = cols.astype(str).pipe(
-            lambda d: reduce(add, [col + _GROUP_SEP for name, col in d.iteritems()])
-        )
+    if isinstance(cols, pd.DataFrame):
+        cols = list(zip(*[cols[c] for c in cols]))
 
-    cols = cols.factorize()[0]
+    cols = pd.factorize(cols)[0]
 
     return cols
 
@@ -563,6 +544,7 @@ def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0):
 
     df_sub = pd.DataFrame(df_dict).sort_values(["group", "time"])
 
+    assert df_sub["time"].notna().all()
     assert df_sub.index.is_unique
 
     if vals is not None:
