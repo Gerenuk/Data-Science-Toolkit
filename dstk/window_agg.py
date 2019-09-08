@@ -6,9 +6,6 @@ import pandas as pd
 from math import sqrt
 
 
-_GROUP_SEP = "--"
-
-
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
