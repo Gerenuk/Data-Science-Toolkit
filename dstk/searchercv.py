@@ -200,10 +200,11 @@ class GoldenSearch:
 
 class GoldenSearcher:
     def __init__(
-        self, param_name, target_precision, x0, x1, *golden_args, **golden_kwargs
+        self, param_name, target_precision, x0, x1, *golden_args, **golden_kwargs, map_value2=None,
     ):
         self.param_name = param_name
         self.target_precision = target_precision
+        self.map_value2 = map_value2 if map_value2 is not None else lambda x:x
 
         if (
             "map_value" not in golden_kwargs
@@ -218,6 +219,7 @@ class GoldenSearcher:
 
     def next_search_params(self, params, last_score):
         val = self.val_gen.send(last_score)
+        val = self.map_value2(val)
 
         if self.searcher.c - self.searcher.a < self.target_precision:
             raise SearchStop(f"Target precision {self.target_precision} reached")
