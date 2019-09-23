@@ -383,8 +383,9 @@ class SearcherCV:
                 print()
             except Exception as exc:
                 print(
-                    f"Searcher {searcher} failed at params {cur_params} and fit params {fit_params} with: {exc}"
+                    f"Searcher {searcher} failed at params {cur_params} with: {exc}"
                 )
+                raise
 
         if verbose_search:
             print(f"Final best score: {color_score(self.best_score_)}")
