@@ -200,7 +200,7 @@ class GoldenSearch:
 
 class GoldenSearcher:
     def __init__(
-        self, param_name, target_precision, x0, x1, *golden_args, **golden_kwargs, map_value2=None,
+        self, param_name, target_precision, x0, x1, *golden_args, map_value2=None, **golden_kwargs
     ):
         self.param_name = param_name
         self.target_precision = target_precision
