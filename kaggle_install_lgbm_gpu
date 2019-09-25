@@ -1,0 +1,5 @@
+#!/bin/bash
+apt-get install libboost-all-dev -y
+pip uninstall lightgbm -y
+pip install lightgbm --install-option="--gpu" --install-option="--opencl-include-dir=/usr/local/cuda/include/" --install-option="--opencl-library=/usr/local/cuda/lib64/libOpenCL.so"
+mkdir -p /etc/OpenCL/vendors && echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd

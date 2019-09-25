@@ -303,7 +303,7 @@ class SearcherCV:
     def fit(self, X, y, verbose_search=True, **fit_params):
         if verbose_search:
             print(
-                f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
+                f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {X.shape[0]} features and {X.shape[1]} instances with folds {self.cv} and scoring {self.scoring}"
             )
             print()
 
