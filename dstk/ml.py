@@ -8,6 +8,7 @@ from sklearn.model_selection import BaseCrossValidator, train_test_split
 from sklearn.utils.validation import _num_samples, indexable
 import colorful
 from functools import partial
+import scipy
 
 colorful.use_true_colors()
 
@@ -406,3 +407,35 @@ class TrainOnlyFold:
 
     def __repr__(self):
         return "TrainOnlyFold()"
+
+
+class ThermometerEncoder(TransformerMixin):
+    """
+    Assumes all values are known at fit
+    """
+    def __init__(self, sort_key=None):
+        self.sort_key = sort_key
+        self.value_map_ = None
+    
+    def fit(self, X, y=None):
+        self.value_map_ = {val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))}
+        return self
+    
+    def transform(self, X, y=None):
+        values = X.map(self.value_map_)
+        
+        possible_values = sorted(self.value_map_.values())
+        
+        idx1 = []
+        idx2 = []
+        
+        all_indices = np.arange(len(X))
+        
+        for idx, val in enumerate(possible_values[:-1]):
+            new_idxs = all_indices[values > val]
+            idx1.extend(new_idxs)
+            idx2.extend(repeat(idx, len(new_idxs)))
+            
+        result = scipy.sparse.coo_matrix(([1] * len(idx1), (idx1, idx2)), shape=(len(X), len(possible_values)), dtype="int8")
+            
+        return result
