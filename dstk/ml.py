@@ -472,3 +472,29 @@ class ThermometerEncoder2(TransformerMixin):
         result = scipy.sparse.coo_matrix(out, dtype=self.dtype)
             
         return result
+        
+        
+@jit(nopython=True)
+def qwk(a1, a2, max_val):
+    """
+    Quadratic weighted Cohen kappa
+    """
+    counts = np.zeros((max_val, max_val))
+
+    for x1, x2 in zip(a1, a2):
+        counts[x1, x2] += 1
+
+    hist1 = counts.sum(axis=0)
+    hist2 = counts.sum(axis=1)
+
+    w_obs = 0
+    w_exp = 0
+    for i in range(max_val):
+        for j in range(max_val):
+            w = (i - j) * (i - j)
+            w_obs += w * counts[i, j]
+            w_exp += w * hist1[i] * hist2[j]
+            
+    w_exp /= len(a1)
+
+    return 1 - w_obs / w_exp
