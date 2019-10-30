@@ -434,7 +434,7 @@ class MaxExpandAgg:
 
 
 @numba.jit(nogil=True, nopython=True)
-def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_end=0):
+def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_end=0, store_flags=None):
     """
     start_idx and end_idx point at candidates for addition or removal
     aggregator will be controlled with .add, .remove, .store and is supposed to store the result
@@ -445,7 +445,12 @@ def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_en
 
     N = len(group)
 
-    result = ScalarResultStorage(N)
+    if store_flags is None:
+        result_N = N
+    else:
+        result_N = np.sum(store_flags)
+
+    result = ScalarResultStorage(result_N)
 
     cur_group = group[0]
 
@@ -485,13 +490,14 @@ def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_en
             aggregator.remove(start_idx)
             start_idx += 1
 
-        result.add(aggregator.value)
+        if store_flags is None or store_flags[cur_idx] == 1:
+            result.add(aggregator.value)
 
     return result.values
 
 
 @numba.jit(nogil=True, nopython=True)
-def groupby_expanding_agg(group, aggregator):
+def groupby_expanding_agg(group, aggregator, store_flags=None):
     """
     start_idx and end_idx point at candidates for addition or removal
     aggregator will be controlled with .add, .remove, .store and is supposed to store the result
@@ -501,7 +507,12 @@ def groupby_expanding_agg(group, aggregator):
 
     cur_group = group[0]
 
-    result = ScalarResultStorage(N)
+    if store_flags is None:
+        result_N = N
+    else:
+        result_N = np.sum(store_flags)
+
+    result = ScalarResultStorage(result_N)
 
     for cur_idx in range(N):
         # Track group variable
@@ -514,7 +525,8 @@ def groupby_expanding_agg(group, aggregator):
 
         aggregator.add(cur_idx)
 
-        result.add(aggregator.value)
+        if store_flags is None or store_flags[cur_idx] == 1:
+            result.add(aggregator.value)
 
     return result.values
 
@@ -528,7 +540,7 @@ def cat_factorize(cols):
     return cols
 
 
-def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0):
+def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0, store_flags=None):
     groups = cat_factorize(groups)
 
     df_dict = {"group": groups, "time": time}
@@ -554,12 +566,13 @@ def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0):
         agg_inst,
         start,
         end,
+        store_flags=store_flags.values,
     )
 
     return pd.Series(result, index=df_sub.index)
 
 
-def pd_groupby_expanding_agg(groups, agg, vals=None):
+def pd_groupby_expanding_agg(groups, agg, vals=None, store_flags=None):
     groups = cat_factorize(groups)
 
     df_dict = {"group": groups}
@@ -578,7 +591,7 @@ def pd_groupby_expanding_agg(groups, agg, vals=None):
     else:
         agg_inst = agg(len(groups))
 
-    result = groupby_expanding_agg(df_sub["group"].values, agg_inst)
+    result = groupby_expanding_agg(df_sub["group"].values, agg_inst, store_flags=store_flags.values)
 
     return pd.Series(result, index=df_sub.index)
 
