@@ -314,7 +314,7 @@ class FracAgg:
         if self.num == 0:
             return np.nan
         else:
-            self.result[idx] = self.cnts[self.cur_val] / self.num
+            return self.cnts[self.cur_val] / self.num
 
 
 @numba.jitclass(
