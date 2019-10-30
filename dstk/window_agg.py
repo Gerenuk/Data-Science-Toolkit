@@ -548,7 +548,7 @@ def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0):
     else:
         agg_inst = agg(len(groups))
 
-    groupby_window_agg(
+    result = groupby_window_agg(
         df_sub["group"].values,
         df_sub["time"].astype("float64").values,
         agg_inst,
@@ -556,7 +556,7 @@ def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0):
         end,
     )
 
-    return pd.Series(agg_inst.result, index=df_sub.index)
+    return pd.Series(result, index=df_sub.index)
 
 
 def pd_groupby_expanding_agg(groups, agg, vals=None):
@@ -578,9 +578,9 @@ def pd_groupby_expanding_agg(groups, agg, vals=None):
     else:
         agg_inst = agg(len(groups))
 
-    groupby_expanding_agg(df_sub["group"].values, agg_inst)
+    result = groupby_expanding_agg(df_sub["group"].values, agg_inst)
 
-    return pd.Series(agg_inst.result, index=df_sub.index)
+    return pd.Series(result, index=df_sub.index)
 
 
 if __name__ == "__main__":
