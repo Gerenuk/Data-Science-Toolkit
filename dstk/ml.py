@@ -413,9 +413,10 @@ class ThermometerEncoder(TransformerMixin):
     """
     Assumes all values are known at fit
     """
-    def __init__(self, sort_key=None):
+    def __init__(self, sort_key=None, dtype="uint8"):
         self.sort_key = sort_key
         self.value_map_ = None
+        self.dtype = dtype
     
     def fit(self, X, y=None):
         self.value_map_ = {val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))}
@@ -436,6 +437,38 @@ class ThermometerEncoder(TransformerMixin):
             idx1.extend(new_idxs)
             idx2.extend(repeat(idx, len(new_idxs)))
             
-        result = scipy.sparse.coo_matrix(([1] * len(idx1), (idx1, idx2)), shape=(len(X), len(possible_values)), dtype="int8")
+        result = scipy.sparse.coo_matrix(([1] * len(idx1), (idx1, idx2)), shape=(len(X), len(possible_values)), dtype=self.dtype)
+            
+        return result
+
+        
+class ThermometerEncoder2(TransformerMixin):
+    """
+    Assumes all values are known at fit
+    
+    7x faster than ThermometerEncoder, but limited to at most 255 categories
+    """
+    def __init__(self, sort_key=None, dtype="uint8"):
+        self.sort_key = sort_key
+        self.value_map_ = None
+        self.dtype = dtype
+    
+    def fit(self, X, y=None):
+        self.value_map_ = {val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))}
+        if len(self.value_map) > 255:  # Is it exactly 255?
+            raise ValueError("This ThermometerEncoder2 does not support more than 255 categories")
+        return self
+    
+    def transform(self, X, y=None):
+        values = X.map(self.value_map_)
+        a=values.values.astype(np.uint8)    # Category limit!
+        
+        out = np.empty((len(a), 0), dtype=np.uint8)
+        while a.any():
+            block = np.fliplr(np.unpackbits((1 << a) - 1).reshape(-1,8))
+            out = np.concatenate([out, block], axis=1)
+            a = np.where(a<8, 0, a-8)
+            
+        result = scipy.sparse.coo_matrix(out, dtype=self.dtype)
             
         return result
