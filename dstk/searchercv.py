@@ -147,7 +147,7 @@ class GoldenSearch:
                     self.new_y = yield self.new_x
 
                     if self.new_y > self.yc + self.noise:
-                        raise SearchStop("Inconsistent y > c")
+                        raise SearchStop(f"Inconsistent y > c (noise {self.new_y - self.yc:.2g})")
 
                     if self.new_y < self.yb:
                         self.a, self.b = self.b, self.new_x
@@ -156,7 +156,7 @@ class GoldenSearch:
                         self.c = self.new_x
                         self.yc = self.new_y
                     else:
-                        raise SearchStop("Inconsistent y = c")
+                        raise SearchStop("Inconsistent y = b")
                 else:
                     self.new_x = self._map_value(
                         self.a + (1 - self.pos) * (self.b - self.a)
@@ -165,7 +165,7 @@ class GoldenSearch:
                     self.new_y = yield self.new_x
 
                     if self.new_y > self.ya + self.noise:
-                        raise SearchStop("Inconsistent y > a")
+                        raise SearchStop(f"Inconsistent y > a (noise {self.new_y - self.ya:.2g})")
 
                     if self.new_y < self.yb:
                         self.b, self.c = self.new_x, self.b
@@ -176,7 +176,7 @@ class GoldenSearch:
                     else:
                         raise SearchStop("Inconsistent y = b")
             else:
-                raise SearchStop("Inconsistent a < b > c")
+                raise SearchStop(f"Inconsistent a < b > c (noise {max(self.yb - self.ya, self.yb - self.yc):.2g})")
 
     def __repr__(self):
         vals = [
@@ -203,10 +203,11 @@ class GoldenSearch:
 
 class GoldenSearcher:
     def __init__(
-        self, param_name, target_precision, x0, x1, *golden_args, **golden_kwargs
+        self, param_name, target_precision, x0, x1, *golden_args, map_value2=None, **golden_kwargs
     ):
         self.param_name = param_name
         self.target_precision = target_precision
+        self.map_value2 = map_value2 if map_value2 is not None else lambda x:x
 
         if (
             "map_value" not in golden_kwargs
@@ -221,6 +222,7 @@ class GoldenSearcher:
 
     def next_search_params(self, params, last_score):
         val = self.val_gen.send(last_score)
+        val = self.map_value2(val)
 
         if self.searcher.c - self.searcher.a < self.target_precision:
             raise SearchStop(f"Target precision {self.target_precision} reached")

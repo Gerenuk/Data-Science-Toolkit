@@ -8,6 +8,7 @@ from sklearn.model_selection import BaseCrossValidator, train_test_split
 from sklearn.utils.validation import _num_samples, indexable
 import colorful
 from functools import partial
+import scipy
 
 colorful.use_true_colors()
 
@@ -404,3 +405,94 @@ class TrainOnlyFold:
 
     def __repr__(self):
         return "TrainOnlyFold()"
+
+
+class ThermometerEncoder(TransformerMixin):
+    """
+    Assumes all values are known at fit
+    """
+    def __init__(self, sort_key=None, dtype="uint8"):
+        self.sort_key = sort_key
+        self.value_map_ = None
+        self.dtype = dtype
+    
+    def fit(self, X, y=None):
+        self.value_map_ = {val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))}
+        return self
+    
+    def transform(self, X, y=None):
+        values = X.map(self.value_map_)
+        
+        possible_values = sorted(self.value_map_.values())
+        
+        idx1 = []
+        idx2 = []
+        
+        all_indices = np.arange(len(X))
+        
+        for idx, val in enumerate(possible_values[:-1]):
+            new_idxs = all_indices[values > val]
+            idx1.extend(new_idxs)
+            idx2.extend(repeat(idx, len(new_idxs)))
+            
+        result = scipy.sparse.coo_matrix(([1] * len(idx1), (idx1, idx2)), shape=(len(X), len(possible_values)), dtype=self.dtype)
+            
+        return result
+
+        
+class ThermometerEncoder2(TransformerMixin):
+    """
+    Assumes all values are known at fit
+    
+    7x faster than ThermometerEncoder, but limited to at most 255 categories
+    """
+    def __init__(self, sort_key=None, dtype="uint8"):
+        self.sort_key = sort_key
+        self.value_map_ = None
+        self.dtype = dtype
+    
+    def fit(self, X, y=None):
+        self.value_map_ = {val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))}
+        if len(self.value_map) > 255:  # Is it exactly 255?
+            raise ValueError("This ThermometerEncoder2 does not support more than 255 categories")
+        return self
+    
+    def transform(self, X, y=None):
+        values = X.map(self.value_map_)
+        a=values.values.astype(np.uint8)    # Category limit!
+        
+        out = np.empty((len(a), 0), dtype=np.uint8)
+        while a.any():
+            block = np.fliplr(np.unpackbits((1 << a) - 1).reshape(-1,8))
+            out = np.concatenate([out, block], axis=1)
+            a = np.where(a<8, 0, a-8)
+            
+        result = scipy.sparse.coo_matrix(out, dtype=self.dtype)
+            
+        return result
+        
+        
+@jit(nopython=True)
+def qwk(a1, a2, max_val):
+    """
+    Quadratic weighted Cohen kappa
+    """
+    counts = np.zeros((max_val, max_val))
+
+    for x1, x2 in zip(a1, a2):
+        counts[x1, x2] += 1
+
+    hist1 = counts.sum(axis=0)
+    hist2 = counts.sum(axis=1)
+
+    w_obs = 0
+    w_exp = 0
+    for i in range(max_val):
+        for j in range(max_val):
+            w = (i - j) * (i - j)
+            w_obs += w * counts[i, j]
+            w_exp += w * hist1[i] * hist2[j]
+            
+    w_exp /= len(a1)
+
+    return 1 - w_obs / w_exp

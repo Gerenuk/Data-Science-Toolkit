@@ -9,14 +9,28 @@ from math import sqrt
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
+        ("cur_idx", numba.int64),
+    ]
+)
+class ScalarResultStorage:
+    def __init__(self, N):
+        self.values = np.full(N, fill_value=np.nan, dtype=numba.float64)
+        self.cur_idx = 0
+
+    def add(self, value):
+        self.values[self.cur_idx] = value
+        self.cur_idx += 1
+
+
+@numba.jitclass(
+    [
+        ("values", numba.float64[:]),
         ("value", numba.float64),
     ]
 )
 class SumAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
         self.value = 0
 
     def add(self, idx):
@@ -31,15 +45,11 @@ class SumAgg:
         # print("Reset")
         self.value = 0
 
-    def store(self, idx):
-        # print("Store", idx)
-        self.result[idx] = self.value
-
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
+        ("cur_val", numba.float64),
         ("sum", numba.float64),
         ("sum_sq", numba.float64),
         ("n", numba.int16),
@@ -48,13 +58,14 @@ class SumAgg:
 class ZScoreAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
         self.sum = 0
         self.sum_sq = 0
         self.n = 0
+        self.cur_val = np.nan
 
     def add(self, idx):
         val = self.values[idx]
+        self.cur_val = val
         self.sum += val
         self.sum_sq += val ** 2
         self.n += 1
@@ -70,25 +81,24 @@ class ZScoreAgg:
         self.sum_sq = 0
         self.n = 0
 
-    def store(self, idx):
+    @property
+    def value(self):
         if self.n == 0:
-            self.result[idx] = np.nan
+            return np.nan
         elif self.n == 1:
-            self.result[idx] = self.sum
+            return self.sum
         else:
             mean = self.sum / self.n
             std = sqrt(self.sum_sq / self.n - mean ** 2)
             if std == 0:
-                self.result[idx] = 0  # should this be zero?
+                return 0  # should this be zero?
             else:
-                val = self.values[idx]
-                self.result[idx] = (val - mean) / std
+                return (self.cur_val - mean) / std
 
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
         ("sum", numba.float64),
         ("n", numba.int16),
     ]
@@ -96,7 +106,6 @@ class ZScoreAgg:
 class MeanAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
         self.sum = 0
         self.n = 0
 
@@ -114,19 +123,19 @@ class MeanAgg:
         self.sum = 0
         self.n = 0
 
-    def store(self, idx):
+    @property
+    def value(self, idx):
         if self.n == 0:
-            self.result[idx] = np.nan
+            return np.nan
         else:
             mean = self.sum / self.n
-            self.result[idx] = mean
+            return mean
 
 
-@numba.jitclass([("value", numba.float64), ("result", numba.float64[:])])
+@numba.jitclass([("value", numba.float64)])
 class CountAgg:
     def __init__(self, N):
         self.value = 0
-        self.result = np.full(N, np.nan)
 
     def add(self, idx):
         self.value += 1
@@ -137,21 +146,16 @@ class CountAgg:
     def reset(self):
         self.value = 0
 
-    def store(self, idx):
-        self.result[idx] = self.value
-
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
         ("cnts", numba.types.DictType(numba.float64, numba.int64)),
     ]
 )
 class NuniqueAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
         self.cnts = numba.typed.Dict.empty(
             key_type=numba.float64, value_type=numba.int64
         )
@@ -177,21 +181,20 @@ class NuniqueAgg:
             key_type=numba.float64, value_type=numba.int64
         )
 
-    def store(self, idx):
-        self.result[idx] = len(self.cnts)
+    @property
+    def value(self, idx):
+        return len(self.cnts)
 
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
         ("cnts", numba.types.DictType(numba.float64, numba.int64)),
     ]
 )
 class MinAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
         self.cnts = numba.typed.Dict.empty(
             key_type=numba.float64, value_type=numba.int64
         )
@@ -217,21 +220,20 @@ class MinAgg:
             key_type=numba.float64, value_type=numba.int64
         )
 
-    def store(self, idx):
-        self.result[idx] = min(self.cnts)   # could be optimized
+    @property
+    def value(self, idx):
+        return min(self.cnts)   # could be optimized
 
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
         ("cnts", numba.types.DictType(numba.float64, numba.int64)),
     ]
 )
 class MaxAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
         self.cnts = numba.typed.Dict.empty(
             key_type=numba.float64, value_type=numba.int64
         )
@@ -257,14 +259,15 @@ class MaxAgg:
             key_type=numba.float64, value_type=numba.int64
         )
 
-    def store(self, idx):
-        self.result[idx] = max(self.cnts)    # could be optimized
+    @property
+    def value(self, idx):
+        return max(self.cnts)    # could be optimized
 
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
+        ("cur_val", numba.float64),
         ("cnts", numba.types.DictType(numba.float64, numba.int64)),
         ("num", numba.int64),
     ]
@@ -272,7 +275,7 @@ class MaxAgg:
 class FracAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
+        self.cur_val = np.nan
 
         self.cnts = numba.typed.Dict.empty(
             key_type=numba.float64, value_type=numba.int64
@@ -281,6 +284,7 @@ class FracAgg:
 
     def add(self, idx):
         val = self.values[idx]
+        self.cur_val = val
 
         self.num += 1
 
@@ -305,19 +309,17 @@ class FracAgg:
         )
         self.num = 0
 
-    def store(self, idx):
+    @property
+    def value(self, idx):
         if self.num == 0:
-            self.result[idx] = np.nan
+            return np.nan
         else:
-            val = self.values[idx]
-
-            self.result[idx] = self.cnts[val] / self.num
+            return self.cnts[self.cur_val] / self.num
 
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
         ("last_value", numba.float64),
         ("cur_value", numba.float64),
     ]
@@ -325,7 +327,6 @@ class FracAgg:
 class DiffAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
 
         self.last_value = np.nan
         self.cur_value = np.nan
@@ -340,21 +341,20 @@ class DiffAgg:
         self.last_value = np.nan
         self.cur_value = np.nan
 
-    def store(self, idx):
-        self.result[idx] = self.cur_value - self.last_value
+    @property
+    def value(self, idx):
+        return self.cur_value - self.last_value
 
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
         ("value", numba.float64),
     ]
 )
 class LastNotNaAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
 
         self.value = np.nan
 
@@ -367,14 +367,10 @@ class LastNotNaAgg:
     def reset(self):
         self.value = np.nan
 
-    def store(self, idx):
-        self.result[idx] = self.value
-
 
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
         ("window_values", numba.float64[:]),
         ("insert_index", numba.int16),
         ("n", numba.int16),
@@ -384,7 +380,6 @@ class LastNotNaAgg:
 class DiffAggN:
     def __init__(self, values, n, missing=np.nan):
         self.values = values
-        self.result = np.full_like(values, np.nan)
 
         self.window_values = np.full(n, missing)
         self.insert_index = 0
@@ -403,14 +398,15 @@ class DiffAggN:
         self.window_values = np.full(self.n, self.missing)
         self.insert_index = self.n - 1
 
-    def store(self, idx):
+    @property
+    def value(self, idx):
         cur_index = self.insert_index + 1
         if cur_index >= self.n:
             cur_index = 0
 
         past_index = self.insert_index
 
-        self.result[idx] = (
+        return (
             self.window_values[cur_index] - self.window_values[past_index]
         )
 
@@ -418,14 +414,12 @@ class DiffAggN:
 @numba.jitclass(
     [
         ("values", numba.float64[:]),
-        ("result", numba.float64[:]),
         ("value", numba.float64),
     ]
 )
 class MaxExpandAgg:
     def __init__(self, values):
         self.values = values
-        self.result = np.full_like(values, np.nan)
 
         self.value = np.nan
 
@@ -438,12 +432,9 @@ class MaxExpandAgg:
     def reset(self):
         self.value = np.nan
 
-    def store(self, idx):
-        self.result[idx] = self.value
-
 
 @numba.jit(nogil=True, nopython=True)
-def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_end=0):
+def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_end=0, store_flags=None):
     """
     start_idx and end_idx point at candidates for addition or removal
     aggregator will be controlled with .add, .remove, .store and is supposed to store the result
@@ -453,6 +444,13 @@ def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_en
     end_idx = 0
 
     N = len(group)
+
+    if store_flags is None:
+        result_N = N
+    else:
+        result_N = np.sum(store_flags)
+
+    result = ScalarResultStorage(result_N)
 
     cur_group = group[0]
 
@@ -492,11 +490,14 @@ def groupby_window_agg(group, time_vals, aggregator, timediff_start, timediff_en
             aggregator.remove(start_idx)
             start_idx += 1
 
-        aggregator.store(cur_idx)
+        if store_flags is None or store_flags[cur_idx] == 1:
+            result.add(aggregator.value)
+
+    return result.values
 
 
 @numba.jit(nogil=True, nopython=True)
-def groupby_expanding_agg(group, aggregator):
+def groupby_expanding_agg(group, aggregator, store_flags=None):
     """
     start_idx and end_idx point at candidates for addition or removal
     aggregator will be controlled with .add, .remove, .store and is supposed to store the result
@@ -505,6 +506,13 @@ def groupby_expanding_agg(group, aggregator):
     N = len(group)
 
     cur_group = group[0]
+
+    if store_flags is None:
+        result_N = N
+    else:
+        result_N = np.sum(store_flags)
+
+    result = ScalarResultStorage(result_N)
 
     for cur_idx in range(N):
         # Track group variable
@@ -517,7 +525,10 @@ def groupby_expanding_agg(group, aggregator):
 
         aggregator.add(cur_idx)
 
-        aggregator.store(cur_idx)
+        if store_flags is None or store_flags[cur_idx] == 1:
+            result.add(aggregator.value)
+
+    return result.values
 
 
 def cat_factorize(cols):
@@ -529,7 +540,7 @@ def cat_factorize(cols):
     return cols
 
 
-def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0):
+def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0, store_flags=None):
     groups = cat_factorize(groups)
 
     df_dict = {"group": groups, "time": time}
@@ -549,18 +560,24 @@ def pd_groupby_window_agg(groups, time, agg, vals=None, start=np.nan, end=0):
     else:
         agg_inst = agg(len(groups))
 
-    groupby_window_agg(
+    result = groupby_window_agg(
         df_sub["group"].values,
         df_sub["time"].astype("float64").values,
         agg_inst,
         start,
         end,
+        store_flags=store_flags.values if store_flags is not None else None,
     )
 
-    return pd.Series(agg_inst.result, index=df_sub.index)
+    if store_flags is None:
+        index = df_sub.index
+    else:
+        index = df_sub.index[store_flags.astype(bool)]
+
+    return pd.Series(result, index=index)
 
 
-def pd_groupby_expanding_agg(groups, agg, vals=None):
+def pd_groupby_expanding_agg(groups, agg, vals=None, store_flags=None):
     groups = cat_factorize(groups)
 
     df_dict = {"group": groups}
@@ -579,9 +596,14 @@ def pd_groupby_expanding_agg(groups, agg, vals=None):
     else:
         agg_inst = agg(len(groups))
 
-    groupby_expanding_agg(df_sub["group"].values, agg_inst)
+    result = groupby_expanding_agg(df_sub["group"].values, agg_inst, store_flags=store_flags.values if store_flags is not None else None)
 
-    return pd.Series(agg_inst.result, index=df_sub.index)
+    if store_flags is None:
+        index = df_sub.index
+    else:
+        index = df_sub.index[store_flags.astype(bool)]
+
+    return pd.Series(result, index=index)
 
 
 if __name__ == "__main__":
