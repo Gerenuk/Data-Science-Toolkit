@@ -189,10 +189,13 @@ class GoldenSearch:
 
         format_if_not_nan = lambda x: f"{x:g}" if not np.isnan(x) else "_"
 
+        best_val = min([v[1] for v in vals])
+
         return (
             f"Golden( "
             + " | ".join(
-                f"{format_if_not_nan(x)}:{format_if_not_nan(y)}" for x, y in vals
+                f"{format_if_not_nan(x)}:{'!' if y == best_val else ''}{format_if_not_nan(y)}"
+                for x, y in vals
             )
             + f" -> {min(self.ya, self.yb, self.yc):g} )"
         )
@@ -222,9 +225,7 @@ class GoldenSearcher:
         if self.searcher.c - self.searcher.a < self.target_precision:
             raise SearchStop(f"Target precision {self.target_precision} reached")
 
-        new_params = params.copy()
-        new_params[self.param_name] = val
-        return new_params
+        return {self.param_name: val}
 
     def state_info(self):
         return str(self.searcher)
@@ -263,17 +264,56 @@ class ListSearcher:
         if self.idx == len(self.val_list):
             raise SearchStop(f"Last of {len(self.val_list)} list values reached")
 
-        new_params = params.copy()
         new_val = self.val_list[self.idx]
-        new_params[self.param_name] = new_val
 
-        return new_params
+        return {self.param_name: new_val}
 
     def state_info(self):
         return f"ListSearcher({self.param_name}, val {self.idx+1}/{len(self.val_list)})"
 
     def __repr__(self):
         return f"ListSearcher({self.param_name}, {len(self.val_list)} vals)"
+
+
+class CrossSearcher:
+    def __init__(self, *searcher_factories):
+        self.searcher_factories = searcher_factories
+        self.searchers = [f() for f in self.searcher_factories]
+        self.params = None
+
+    def next_search_params(self, params, last_score):
+        if self.params is None:
+            self.params = [
+                searcher.next_search_params(params, last_score)
+                for searcher in self.searchers
+            ]
+        else:
+            idx = len(self.searchers)-1
+            while 1:
+                try:
+                    new_params_s = self.searchers[idx].next_search_params(
+                        params, last_score
+                    )
+                    self.params[idx] = new_params_s
+                    idx += 1
+                    if idx >= len(self.searchers):
+                        break
+                except SearchStop:
+                    self.searchers[idx] = self.searcher_factories[idx]()
+                    idx -= 1
+                    if idx < 0:
+                        raise SearchStop("CrossSearcher finished")
+
+        new_params = params.copy()
+        for param in self.params:
+            new_params.update(param)
+        return new_params
+
+    def state_info(self):
+        return f"CrossSearcher({', '.join(s.state_info() for s in self.searchers)})"
+
+    def __repr__(self):
+        return f"CrossSearcher({', '.join(repr(s) for s in self.searchers)})"
 
 
 class SearcherCV:
@@ -301,24 +341,24 @@ class SearcherCV:
     def fit(self, X, y, verbose_search=True, **fit_params):
         if verbose_search:
             print(
-                f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {len(X.columns)} features and {len(X)} instances with folds {self.cv} and scoring {self.scoring}"
+                f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {X.shape[1]} features and {X.shape[0]} instances with folds {self.cv} and scoring {self.scoring}"
             )
             print()
 
         self.best_params_ = {}
 
         for searcher in self.searchers:
-            cur_params = self.best_params_
-
             if verbose_search:
                 print(f">> Starting searcher {searcher}")
 
             try:
                 score = None
                 while 1:  # SearchStop expected
-                    cur_params = searcher.next_search_params(
-                        cur_params, score
+                    new_params = searcher.next_search_params(
+                        self.best_params_, score
                     )  # may throw StopSearch exception
+
+                    cur_params = {**self.best_params_, **new_params}
 
                     mark = (
                         lambda param_name: "*"
@@ -361,8 +401,7 @@ class SearcherCV:
 
                     new_params_color_str = ", ".join(
                         f"{color_param_name(param_name)} = {color_param_val(param_val)}"
-                        if hasattr(searcher, "param_name")
-                        and searcher.param_name == param_name
+                        if param_name in new_params
                         else f"{param_name} = {format_if_number(param_val)}"
                         for param_name, param_val in sorted(cur_params.items())
                     )
@@ -381,8 +420,9 @@ class SearcherCV:
                 print()
             except Exception as exc:
                 print(
-                    f"Searcher {searcher} failed at params {cur_params} and fit params {fit_params} with: {exc}"
+                    f"Searcher {searcher} failed at params {cur_params} with: {exc}"
                 )
+                raise
 
         if verbose_search:
             print(f"Final best score: {color_score(self.best_score_)}")

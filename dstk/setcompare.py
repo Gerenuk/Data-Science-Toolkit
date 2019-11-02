@@ -40,8 +40,18 @@ def setcompare(iter1, iter2):
 
     cnt_perct = "{} ({:.0%})".format
 
+    if hasattr(iter1, "name"):
+        name1 = f"1 {iter1.name}"
+    else:
+        name1 = "1"
+
+    if hasattr(iter2, "name"):
+        name2 = f"2 {iter2.name}"
+    else:
+        name2 = "2"
+
     display_data = [
-        ["", "Set 1 only", "Intersect. 1 & 2", "Set 2 only"],
+        ["", f"Set {name1} only", "Intersect.", f"Set {name2} only"],
         [
             "Count",
             cnt_perct(cnt1, cnt1 / (cnt1 + cnt12a)),

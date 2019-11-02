@@ -44,7 +44,6 @@ def earlystop(
     eval_metric=None,
     early_stopping_rounds=100,
     test_size=0.1,
-    verbose=False,
     num_feat_imps=5,
     shuffle=False,
     **fit_params,
@@ -59,7 +58,6 @@ def earlystop(
         early_stopping_rounds=early_stopping_rounds,
         eval_set=[(X_stop, y_stop)],
         eval_metric=eval_metric,
-        verbose=verbose,
         **fit_params,
     )
 
