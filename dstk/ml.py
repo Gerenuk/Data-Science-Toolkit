@@ -9,6 +9,7 @@ from sklearn.utils.validation import _num_samples, indexable
 import colorful
 from functools import partial
 import scipy
+from numba import jit
 
 colorful.use_true_colors()
 
@@ -47,15 +48,17 @@ def earlystop(
     test_size=0.1,
     num_feat_imps=5,
     shuffle=False,
+    groups=None,
     **fit_params,
 ):
-    X_train, X_stop, y_train, y_stop = train_test_split(
-        X, y, test_size=test_size, shuffle=shuffle
+    X_train, X_stop, y_train, y_stop, groups_train, groups_stop = train_test_split(  #! groups_stop dodgy
+        X, y, groups, test_size=test_size, shuffle=shuffle
     )
 
     clf.fit(
         X_train,
         y_train,
+        groups=groups_train,
         early_stopping_rounds=early_stopping_rounds,
         eval_set=[(X_stop, y_stop)],
         eval_metric=eval_metric,
@@ -66,18 +69,23 @@ def earlystop(
     if hasattr(clf, "best_iteration_") and clf.best_iteration_ is not None:
         infos.append(f"Best iter {clf.best_iteration_}")
 
-        if hasattr(clf, "best_score_") and clf.best_score_:   # this variable is meant to come only from early stoppers
+        if (
+            hasattr(clf, "best_score_") and clf.best_score_
+        ):  # this variable is meant to come only from early stoppers
             if isinstance(clf.best_score_, dict):
                 best_score_str = ", ".join(
                     (f"{set_name}(" if len(clf.best_score_) > 1 else "")
                     + ", ".join(
-                        f"{score_name}={score:g}" for score_name, score in scores.items()
+                        f"{score_name}={score:g}"
+                        for score_name, score in scores.items()
                     )
                     + (")" if len(clf.best_score_) > 1 else "")
                     for set_name, scores in clf.best_score_.items()
                 )
             else:
-                best_score_str = format_if_number(clf.best_score_)    # usually should not happen
+                best_score_str = format_if_number(
+                    clf.best_score_
+                )  # usually should not happen
 
             infos.append(f"Stop scores {best_score_str}")
 
@@ -303,11 +311,11 @@ class StratifyGroup:
 
     def get_n_splits(self, X=None, y=None, groups=None):
         return self.n_splits
-        
+
     def __repr__(self):
         return f"StratifyGroup({self.n_splits})"
 
-        
+
 class FeatureSelector(BaseEstimator, TransformerMixin):
     """
     Subselects columns for the Sklearn Pipeline
@@ -322,78 +330,80 @@ class FeatureSelector(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         return X[self.feature_names].values
-    
-    
+
+
 class DefaultNA(BaseEstimator, ClassifierMixin):
     """
     Classifier wrapper which will handle NaN values in the features and predict a `na_default` value for missing values
     """
+
     def __init__(self, clf, na_default=0):
         self.clf = clf
         self.na_default = na_default
-        
+
     def fit(self, X, y=None):
         mask = np.isnan(X).any(axis=1)
-        
-        X_non_na=X[~mask]
-        
+
+        X_non_na = X[~mask]
+
         if y is not None:
             y_non_na = y[~mask]
         else:
             y_non_na = None
-        
+
         self.clf.fit(X_non_na, y_non_na)
-        
+
         return self
-        
+
     def predict(self, X):
         mask = np.isnan(X).any(axis=1)
-        
-        X_non_na=X[~mask]
-        
+
+        X_non_na = X[~mask]
+
         y_pred = self.clf.predict(X_non_na)
-        
-        y=np.full(X.shape[0], self.na_default)
+
+        y = np.full(X.shape[0], self.na_default)
         y[~mask] = y_pred
-        
-        return y 
-    
-    
+
+        return y
+
+
 class FilterFirstCol(BaseEstimator, ClassifierMixin):
     """
     Classifier wrapper which filters on the first column of X and fit/predicts only on filtered X
     At the same time the first column is dropped for the wrapped classifier
     The rows which are filtered out get `default` as their prediction
     """
+
     def __init__(self, clf, min_value, default):
         self.clf = clf
         self.min_value = min_value
         self.default = default
-        
+
     def fit(self, X, y=None):
-        select = X[:,0] > self.min_value
-        
+        select = X[:, 0] > self.min_value
+
         X_fit = X[select, 1:]
-        
+
         if y is not None:
             y_fit = y[select]
         else:
             y_fit = None
-        
+
         self.clf.fit(X_fit, y_fit)
-        
+
         return self
-        
+
     def predict(self, X):
-        select = X[:,0] > self.min_value
-        
-        X_pred=X[select, 1:]
+        select = X[:, 0] > self.min_value
+
+        X_pred = X[select, 1:]
         y_pred = self.clf.predict(X_pred)
-        
-        y=np.full(X.shape[0], self.default)
+
+        y = np.full(X.shape[0], self.default)
         y[select] = y_pred
-        
-        return y  
+
+        return y
 
 
 class TrainOnlyFold:
@@ -411,73 +421,85 @@ class ThermometerEncoder(TransformerMixin):
     """
     Assumes all values are known at fit
     """
+
     def __init__(self, sort_key=None, dtype="uint8"):
         self.sort_key = sort_key
         self.value_map_ = None
         self.dtype = dtype
-    
+
     def fit(self, X, y=None):
-        self.value_map_ = {val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))}
+        self.value_map_ = {
+            val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))
+        }
         return self
-    
+
     def transform(self, X, y=None):
         values = X.map(self.value_map_)
-        
+
         possible_values = sorted(self.value_map_.values())
-        
+
         idx1 = []
         idx2 = []
-        
+
         all_indices = np.arange(len(X))
-        
+
         for idx, val in enumerate(possible_values[:-1]):
             new_idxs = all_indices[values > val]
             idx1.extend(new_idxs)
             idx2.extend(repeat(idx, len(new_idxs)))
-            
-        result = scipy.sparse.coo_matrix(([1] * len(idx1), (idx1, idx2)), shape=(len(X), len(possible_values)), dtype=self.dtype)
-            
+
+        result = scipy.sparse.coo_matrix(
+            ([1] * len(idx1), (idx1, idx2)),
+            shape=(len(X), len(possible_values)),
+            dtype=self.dtype,
+        )
+
         return result
 
-        
+
 class ThermometerEncoder2(TransformerMixin):
     """
     Assumes all values are known at fit
-    
+
     7x faster than ThermometerEncoder, but limited to at most 255 categories
     """
+
     def __init__(self, sort_key=None, dtype="uint8"):
         self.sort_key = sort_key
         self.value_map_ = None
         self.dtype = dtype
-    
+
     def fit(self, X, y=None):
-        self.value_map_ = {val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))}
+        self.value_map_ = {
+            val: i for i, val in enumerate(sorted(X.unique(), key=self.sort_key))
+        }
         if len(self.value_map) > 255:  # Is it exactly 255?
-            raise ValueError("This ThermometerEncoder2 does not support more than 255 categories")
+            raise ValueError(
+                "This ThermometerEncoder2 does not support more than 255 categories"
+            )
         return self
-    
+
     def transform(self, X, y=None):
         values = X.map(self.value_map_)
-        a=values.values.astype(np.uint8)    # Category limit!
-        
+        a = values.values.astype(np.uint8)  # Category limit!
+
         out = np.empty((len(a), 0), dtype=np.uint8)
         while a.any():
-            block = np.fliplr(np.unpackbits((1 << a) - 1).reshape(-1,8))
+            block = np.fliplr(np.unpackbits((1 << a) - 1).reshape(-1, 8))
             out = np.concatenate([out, block], axis=1)
-            a = np.where(a<8, 0, a-8)
-            
+            a = np.where(a < 8, 0, a - 8)
+
         result = scipy.sparse.coo_matrix(out, dtype=self.dtype)
-            
+
         return result
-        
-        
+
+
 @jit(nopython=True)
-def qwk(a1, a2, max_val):
+def qwk(a1, a2, num_classes):
     """
     Quadratic weighted Cohen kappa
     """
-    counts = np.zeros((max_val, max_val))
+    counts = np.zeros((num_classes, num_classes))
 
     for x1, x2 in zip(a1, a2):
         counts[x1, x2] += 1
@@ -487,12 +509,12 @@ def qwk(a1, a2, max_val):
 
     w_obs = 0
     w_exp = 0
-    for i in range(max_val):
-        for j in range(max_val):
+    for i in range(num_classes):
+        for j in range(num_classes):
             w = (i - j) * (i - j)
             w_obs += w * counts[i, j]
             w_exp += w * hist1[i] * hist2[j]
-            
+
     w_exp /= len(a1)
 
     return 1 - w_obs / w_exp

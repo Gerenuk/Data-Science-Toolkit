@@ -83,3 +83,7 @@ def natural_sort(val):
         int("".join(gr)) if is_digit else "".join(gr)
         for is_digit, gr in groupby(val, lambda x: x.isdigit())
     )
+
+
+def factorize(dd):
+    pass
