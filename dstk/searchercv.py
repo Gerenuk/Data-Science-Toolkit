@@ -356,7 +356,9 @@ class SearcherCV:
     def fit(self, X, y, groups=None, verbose_search=True, **fit_params):
         if verbose_search:
             print(
-                f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {X.shape[1]} features and {X.shape[0]} instances with folds {self.cv} and scoring {self.scoring}"
+                f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {X.shape[1]} features "
+                f"and {X.shape[0]} instances with folds {self.cv} and "
+                f"scoring {self.scoring} on model {self.estimator}"
             )
             print()
 
@@ -409,7 +411,9 @@ class SearcherCV:
 
                     start_time = time.time()
 
-                    score = self._score(X, y, groups=groups, params=cur_params, fit_params=fit_params)
+                    score = self._score(
+                        X, y, groups=groups, params=cur_params, fit_params=fit_params
+                    )
 
                     end_time = time.time()
                     run_time_min = (end_time - start_time) / 60

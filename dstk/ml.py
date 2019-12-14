@@ -3,9 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import entropy
 from itertools import islice, chain, repeat
-from sklearn.base import TransformerMixin, BaseEstimator, ClassifierMixin
+from sklearn.base import TransformerMixin, BaseEstimator, ClassifierMixin, clone
 from sklearn.model_selection import BaseCrossValidator, train_test_split
-from sklearn.utils.validation import _num_samples, indexable
+from sklearn.utils.validation import _num_samples, indexable, check_X_y
 import colorful
 from functools import partial
 import scipy
@@ -51,9 +51,15 @@ def earlystop(
     groups=None,
     **fit_params,
 ):
-    X_train, X_stop, y_train, y_stop, groups_train, groups_stop = train_test_split(  #! groups_stop dodgy
-        X, y, groups, test_size=test_size, shuffle=shuffle
-    )
+    if groups is not None:
+        X_train, X_stop, y_train, y_stop, groups_train, groups_stop = train_test_split(  #! groups_stop dodgy
+            X, y, groups, test_size=test_size, shuffle=shuffle
+        )
+    else:
+        X_train, X_stop, y_train, y_stop = train_test_split(
+            X, y, test_size=test_size, shuffle=shuffle
+        )
+        groups_train=None
 
     clf.fit(
         X_train,
@@ -495,7 +501,7 @@ class ThermometerEncoder2(TransformerMixin):
 
 
 @jit(nopython=True)
-def qwk(a1, a2, num_classes):
+def qwk_numba(a1, a2, num_classes):
     """
     Quadratic weighted Cohen kappa
     """
@@ -518,3 +524,73 @@ def qwk(a1, a2, num_classes):
     w_exp /= len(a1)
 
     return 1 - w_obs / w_exp
+
+
+class ThresholdClf(BaseEstimator, ClassifierMixin):
+    def __init__(self, estimator, thresholds):
+        self.estimator = estimator
+        self.thresholds = thresholds
+
+    def fit(self, X, y, **kwargs):
+        X, y = indexable(X, y)
+
+        self.estimator.fit(X, y, **kwargs)
+
+        return self
+
+    def predict(self, X):
+        pred = self.estimator.predict(X)
+
+        y = np.digitize(pred, self.thresholds).astype(int)
+
+        return y
+
+    def __getattr__(self, name):
+        if hasattr(self.estimator, name):
+            return getattr(self.estimator, name)
+
+        raise AttributeError
+
+
+class Cascaded(BaseEstimator, ClassifierMixin):
+    def __init__(self, first_estimator, first_class, final_estimator):
+        """
+        First estimator decides whether to output first_class (prediction 1) or
+        run the second estimator to predict another class
+        """
+        self.first_estimator = first_estimator
+        self.first_class = first_class
+        self.final_estimator = final_estimator
+
+    def fit(self, X, y):
+        #X, y = check_X_y(X, y)
+
+        y_first = (y == self.first_class).astype(int)
+
+        self.first_estimator=clone(self.first_estimator)
+        self.first_estimator.fit(X, y_first)
+
+        select_final = (y != self.first_class)
+        X_final = X[select_final]
+        y_final = y[select_final]
+
+        self.final_estimator=clone(self.final_estimator)
+        self.final_estimator.fit(X_final, y_final)
+
+    def predict(self, X):
+        #X = check_array(X)
+
+        y_first = self.first_estimator.predict(X)
+
+        X_final = X[y_first==0]
+
+        y_final = self.final_estimator.predict(X_final)
+
+        dtype = y_final.dtype
+        result = np.empty(shape=X.shape[0], dtype=dtype)
+        is_first = y_first.astype(bool)
+
+        result[is_first]=self.first_class
+        result[~is_first]=y_final
+
+        return result

@@ -519,7 +519,6 @@ def groupby_window_agg(
 @numba.jit(nogil=True, nopython=True)
 def groupby_expanding_agg(group, aggregator, store_flags=None, storage=None):
     """
-    start_idx and end_idx point at candidates for addition or removal
     aggregator will be controlled with .add, .remove, .store and is supposed to store the result
     needs to be sorted by [group]
     """
