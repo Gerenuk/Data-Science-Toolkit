@@ -349,7 +349,7 @@ class SearcherCV:
         self.estimator = estimator
 
         self.searchers = searchers
-y
+
         self.scoring = scoring
         self.cv = cv
         self.best_params_ = None
