@@ -338,20 +338,25 @@ class SearcherCV:
         searchers,
         *,
         scoring,
-        cv,
+        cv=5,
         num_feat_imps=5,
         init_best_score=None,
+        cross_validate=cross_validate,
     ):
+        """
+        :param cross_validate: needs "test_score", "train_score", "estimator"
+        """
         self.estimator = estimator
 
         self.searchers = searchers
-
+y
         self.scoring = scoring
         self.cv = cv
         self.best_params_ = None
         self.best_score_ = init_best_score
 
         self.num_feat_imps = num_feat_imps
+        self.cross_validate = cross_validate
 
     def fit(self, X, y, groups=None, verbose_search=True, **fit_params):
         if verbose_search:
@@ -451,7 +456,7 @@ class SearcherCV:
         estimator = clone(self.estimator)
         estimator.set_params(**params)
 
-        cross_val_info = cross_validate(
+        cross_val_info = self.cross_validate(
             estimator,
             X,
             y,
