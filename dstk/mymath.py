@@ -1,5 +1,7 @@
 from fractions import Fraction
 import colorful
+from statistics import mean, stdev
+from math import sqrt
 
 
 def cf_to_fraction(cf):
@@ -51,3 +53,7 @@ def uncertain_num_to_str(x, dx, use_color=True):
         result_str = x_str + dx_str
 
     return result_str
+
+    
+def mean_estimates_to_str(xs):
+    return uncertain_num_to_str(mean(x), stdev(x)/sqrt(len(x)))
