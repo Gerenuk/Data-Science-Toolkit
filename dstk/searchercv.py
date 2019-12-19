@@ -7,6 +7,7 @@ import time
 from dstk.ml import color_score, color_param_val, color_param_name, format_if_number
 import datetime as dt
 import pytz
+from statistics import mean
 
 
 my_timezone = pytz.timezone(
@@ -337,7 +338,7 @@ class SearcherCV:
         estimator,
         searchers,
         *,
-        scoring,
+        scoring=None,
         cv=5,
         num_feat_imps=5,
         init_best_score=None,
@@ -358,7 +359,15 @@ class SearcherCV:
         self.num_feat_imps = num_feat_imps
         self.cross_validate = cross_validate
 
-    def fit(self, X, y, groups=None, verbose_search=True, **fit_params):
+    def fit(
+        self,
+        X,
+        y,
+        groups=None,
+        verbose_search=True,
+        print_train_scores=False,
+        **fit_params,
+    ):
         if verbose_search:
             print(
                 f"[{dt.datetime.now(my_timezone):%H:%M}] Starting fit on {X.shape[1]} features "
@@ -417,7 +426,12 @@ class SearcherCV:
                     start_time = time.time()
 
                     score = self._score(
-                        X, y, groups=groups, params=cur_params, fit_params=fit_params
+                        X,
+                        y,
+                        groups=groups,
+                        params=cur_params,
+                        fit_params=fit_params,
+                        print_train_scores=False,
                     )
 
                     end_time = time.time()
@@ -452,7 +466,7 @@ class SearcherCV:
             for param, val in sorted(self.best_params_.items()):
                 print(f"    {color_param_name(param)} = {color_param_val(val)},")
 
-    def _score(self, X, y, groups, params, fit_params):
+    def _score(self, X, y, groups, params, fit_params, print_train_scores):
         estimator = clone(self.estimator)
         estimator.set_params(**params)
 
@@ -464,19 +478,23 @@ class SearcherCV:
             scoring=self.scoring,
             cv=self.cv,
             fit_params=fit_params,
-            return_train_score=True,
+            return_train_score=print_train_scores,
             return_estimator=True,
         )
 
-        for fold_idx, (clf, train_score, test_score) in enumerate(
-            zip(
-                cross_val_info["estimator"],
-                cross_val_info["train_score"],
-                cross_val_info["test_score"],
-            ),
-            1,
+        assert len(cross_val_info["estimator"]) == len(cross_val_info["test_score"]), cross_val_info
+
+        for fold_idx, (clf, test_score) in enumerate(
+            zip(cross_val_info["estimator"], cross_val_info["test_score"])
         ):
-            infos = [f"{test_score:g} (train {train_score:g})"]
+            score_info = f"{test_score:g}"
+
+            if print_train_scores:
+                train_score = cross_val_info["train_score"][fold_idx]
+                score_info += f" (train {train_score:g})"
+
+            infos = [score_info]
+
             if hasattr(clf, "best_iteration_") and clf.best_iteration_ is not None:
                 infos.append(f"best iter {clf.best_iteration_}")
 
@@ -507,8 +525,8 @@ class SearcherCV:
                     )
                 )
 
-            print(f"Fold {fold_idx}:", "; ".join(infos))
+            print(f"Fold {fold_idx+1}:", "; ".join(infos))
 
-        score = cross_val_info["test_score"].mean()
+        score = mean(cross_val_info["test_score"])
 
         return -score
