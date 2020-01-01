@@ -7,7 +7,8 @@ import time
 from dstk.ml import color_score, color_param_val, color_param_name, format_if_number
 import datetime as dt
 import pytz
-from statistics import mean
+from statistics import mean, stdev
+from .mymath import mean_estimates_to_str
 
 
 my_timezone = pytz.timezone(
@@ -343,6 +344,7 @@ class SearcherCV:
         num_feat_imps=5,
         init_best_score=None,
         cross_validate=cross_validate,
+        avg_score_func=mean,
     ):
         """
         :param cross_validate: needs "test_score", "train_score", "estimator"
@@ -358,6 +360,7 @@ class SearcherCV:
 
         self.num_feat_imps = num_feat_imps
         self.cross_validate = cross_validate
+        self.avg_score_func = avg_score_func
 
     def fit(
         self,
@@ -431,7 +434,7 @@ class SearcherCV:
                         groups=groups,
                         params=cur_params,
                         fit_params=fit_params,
-                        print_train_scores=False,
+                        print_train_scores=print_train_scores,
                     )
 
                     end_time = time.time()
@@ -482,7 +485,9 @@ class SearcherCV:
             return_estimator=True,
         )
 
-        assert len(cross_val_info["estimator"]) == len(cross_val_info["test_score"]), cross_val_info
+        assert len(cross_val_info["estimator"]) == len(
+            cross_val_info["test_score"]
+        ), cross_val_info
 
         for fold_idx, (clf, test_score) in enumerate(
             zip(cross_val_info["estimator"], cross_val_info["test_score"])
@@ -527,6 +532,15 @@ class SearcherCV:
 
             print(f"Fold {fold_idx+1}:", "; ".join(infos))
 
-        score = mean(cross_val_info["test_score"])
+        scores = cross_val_info["test_score"]
+        score = self.avg_score_func(scores)
+        score_error = stdev(scores) / sqrt(len(scores))
+
+        score_print_info = f"Val. score: {mean_estimates_to_str(scores)}"
+        if print_train_scores:
+            train_scores = cross_val_info["train_score"]
+            train_score = self.avg_score_func(train_scores)
+            score_print_info += f"; Train score: {mean_estimates_to_str(train_scores)}; Diff: {train_score-score:.2g}"
+        print(score_print_info)
 
         return -score

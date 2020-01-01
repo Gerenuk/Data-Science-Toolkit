@@ -59,7 +59,7 @@ def earlystop(
         X_train, X_stop, y_train, y_stop = train_test_split(
             X, y, test_size=test_size, shuffle=shuffle
         )
-        groups_train=None
+        groups_train = None
 
     clf.fit(
         X_train,
@@ -563,26 +563,26 @@ class Cascaded(BaseEstimator, ClassifierMixin):
         self.final_estimator = final_estimator
 
     def fit(self, X, y):
-        #X, y = check_X_y(X, y)
+        # X, y = check_X_y(X, y)
 
         y_first = (y == self.first_class).astype(int)
 
-        self.first_estimator=clone(self.first_estimator)
+        self.first_estimator = clone(self.first_estimator)
         self.first_estimator.fit(X, y_first)
 
-        select_final = (y != self.first_class)
+        select_final = y != self.first_class
         X_final = X[select_final]
         y_final = y[select_final]
 
-        self.final_estimator=clone(self.final_estimator)
+        self.final_estimator = clone(self.final_estimator)
         self.final_estimator.fit(X_final, y_final)
 
     def predict(self, X):
-        #X = check_array(X)
+        # X = check_array(X)
 
         y_first = self.first_estimator.predict(X)
 
-        X_final = X[y_first==0]
+        X_final = X[y_first == 0]
 
         y_final = self.final_estimator.predict(X_final)
 
@@ -590,7 +590,70 @@ class Cascaded(BaseEstimator, ClassifierMixin):
         result = np.empty(shape=X.shape[0], dtype=dtype)
         is_first = y_first.astype(bool)
 
-        result[is_first]=self.first_class
-        result[~is_first]=y_final
+        result[is_first] = self.first_class
+        result[~is_first] = y_final
 
         return result
+
+
+class BaggingClassifier:
+    """
+    Different from sklearn as it will keep "category" dtypes
+    """
+
+    def __init__(self, estimator, n_estimators, max_samples):
+        self.estimator = estimator
+        self.n_estimators = n_estimators
+        self.max_samples = max_samples
+
+        self.seeds = range(self.n_estimators)
+
+    def fit(self, X, y, do_oob_preds=False):
+        estimators = [clone(self.estimator) for _ in range(self.n_estimators)]
+
+        oob_ys = []
+        oob_preds = []
+        oob_idxs = []
+
+        for seed, estimator in zip(self.seeds, estimators):
+            num_select = int(X.shape[0] * self.max_samples)
+            seed_selected_idxs = np.random.choice(X.shape[0], size=num_select)
+
+            X_seed = X.iloc[seed_selected_idxs]
+            y_seed = y.iloc[seed_selected_idxs]
+
+            estimator.fit(X_seed, y_seed)
+
+            if do_oob_preds:
+                seed_oob_idxs = np.ones(X.shape[0], np.bool)
+                seed_oob_idxs[seed_selected_idxs] = 0
+
+                X_oob = X.loc[seed_oob_idxs]
+                y_oob = y.loc[seed_oob_idxs]
+
+                oob_pred = estimator.predict(X_oob)
+
+                oob_ys.append(y_oob)
+                oob_preds.append(oob_pred)
+                oob_idxs.append(seed_oob_idxs)
+
+        self.estimators_ = estimators
+
+        if oob_preds:
+            self.oob_ys_ = oob_ys
+            self.oob_preds_ = oob_preds
+            self.oob_idxs_ = oob_idxs
+
+    def predict(self, X):
+        part_preds = []
+        for estimator in self.estimators_:
+            part_pred = estimator.predict(X)
+            part_preds.append(part_pred)
+
+        part_preds = np.array(part_preds)
+
+        mode_result = scipy.stats.mode(part_preds)
+
+        self.part_preds_ = part_preds
+
+        return mode_result.mode[0]

@@ -1,7 +1,7 @@
 from fractions import Fraction
 import colorful
 from statistics import mean, stdev
-from math import sqrt
+from math import sqrt, floor, log10
 
 
 def cf_to_fraction(cf):
@@ -40,9 +40,9 @@ def uncertain_num_to_str(x, dx, use_color=True):
     """
     Error is always added at the end.
     """
-    n = floor(log(dx, 10))
+    n = floor(log10(dx))
     dx = round(dx, -n)  # re-round in case dx 0.096 -> 0.1
-    n = floor(log(dx, 10))
+    n = floor(log10(dx))
 
     x_str = str(round(x, -n))
     dx_str = "(" + str(round(dx * 10 ** (-n))) + ")"
@@ -54,6 +54,7 @@ def uncertain_num_to_str(x, dx, use_color=True):
 
     return result_str
 
-    
+
 def mean_estimates_to_str(xs):
-    return uncertain_num_to_str(mean(x), stdev(x)/sqrt(len(x)))
+    return uncertain_num_to_str(mean(xs), stdev(xs) / sqrt(len(xs)))
+
