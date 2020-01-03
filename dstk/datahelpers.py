@@ -4,6 +4,8 @@ import numpy as np
 from itertools import groupby
 import re
 from operator import itemgetter
+import base64
+import gzip
 
 
 @dataclass
@@ -86,4 +88,16 @@ def natural_sort(val):
 
 
 def factorize(dd):
-    pass
+    return pd.factorize(list(zip(*[dd[col] for col in dd.columns])
+    
+    
+def calc_encoded_file_content(filename):
+    with open(filename, "rb") as f:
+        content = f.read()
+    return base64.b64encode(gzip.compress(content))
+    
+    
+def write_encoded_to_file(encoded, filename):
+    with open(filename, "wb") as f:
+        content = gzip.decompress(base64.b64decode(encoded))
+        f.write(content)
